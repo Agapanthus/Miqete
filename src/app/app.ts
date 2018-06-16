@@ -29,8 +29,10 @@ const buildGUI: () => void = () => {
 
   const element = document.getElementById("testeri");
 
-  const mdom = new bo.Sum( new l.Integer(2), new l.Integer(3), new io.Mul( new io.Sub(new io.Add(new l.Integer(2), new l.Integer(3) ), new l.Integer(7)), new l.Integer(5)));
-
+  const mdom = (new bo.Sum( new l.Integer(2), new l.Integer(3), 
+        new io.Mul( new io.Add(new io.Sub(new l.Integer(2), new l.Integer(3) ), new l.Integer(7)), new l.Integer(5))
+      )).bake();
+  
   new Editor(element, mdom);
 
 };

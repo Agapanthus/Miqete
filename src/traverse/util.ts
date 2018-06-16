@@ -1,5 +1,5 @@
 
-import { Selectable, Vector } from "../dom/edom";
+import { Selectable, Vector } from "../dom/mdom";
 import * as util from "../util/util";
 
 export function directTextContent(e: Element) {

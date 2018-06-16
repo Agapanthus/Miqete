@@ -1,12 +1,12 @@
-import { MNode, EvalFlags, SimplificationStrategy, maxPrec } from "./mdom";
-import { ENode, Vector } from "./edom";
+import { MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec } from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
+import { Parentheses } from "./parentheses";
 
 
 function opar(inner: string, addPar: boolean) {
-    if(addPar) return "\\left(" + inner + "\\right)";
+    if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
     return inner;
 }
 
@@ -18,10 +18,7 @@ abstract class bigPrefixOperator implements MNode {
     public children: MNode[]
     public parent: MNode
     public precendence: number;
-
-    // TODO: Instead of "a*b" just write "a b"
-    private spaceSyno: boolean;
-
+    
     private katexCmd;
     private htmlSym;
 
@@ -41,6 +38,21 @@ abstract class bigPrefixOperator implements MNode {
         this.pos = undefined;
         this.katexCmd = katexCmd;
         this.htmlSym = htmlSym;
+    }
+
+    public strip(): MNode {
+        this.children[0] = this.children[0].strip();
+        this.children[1] = this.children[1].strip();
+        this.children[2] = this.children[2].strip();
+        return this;
+    }
+
+    public bake(): MNode {
+        this.children[0] = this.children[0].bake();
+        this.children[1] = this.children[1].bake();
+        this.children[2] = this.children[2].bake();
+        if(this.children[2].precendence < this.myVirtualPrec) this.children[2] = new Parentheses(this.children[2], "(", ")");
+        return this;
     }
 
     public rKatex(e: Element, br: Vector) {

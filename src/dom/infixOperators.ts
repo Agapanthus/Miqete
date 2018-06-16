@@ -1,14 +1,9 @@
 
-import { MNode, EvalFlags, SimplificationStrategy } from "./mdom";
-import { ENode, Vector } from "./edom";
+import { opar, MNode, Vector, EvalFlags, SimplificationStrategy } from "./mdom";
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
+import { Parentheses } from "./parentheses";
 
-
-function opar(inner: string, addPar: boolean) {
-    if(addPar) return "\\left(" + inner + "\\right)";
-    return inner;
-}
 
 
 abstract class binaryInfixOperator implements MNode {
@@ -19,9 +14,6 @@ abstract class binaryInfixOperator implements MNode {
     public parent: MNode
     public precendence: number;
 
-    // TODO: Instead of "a*b" just write "a b"
-    private spaceSyno: boolean;
-
     private katexCmd;
     private htmlSym;
 
@@ -29,6 +21,7 @@ abstract class binaryInfixOperator implements MNode {
         this.children = [a,b];
         a.parent = this;
         b.parent = this;
+
         this.precendence = precedence;
         this.e = undefined;
         this.parent = undefined;
@@ -38,7 +31,21 @@ abstract class binaryInfixOperator implements MNode {
         this.htmlSym = htmlSym;
     }
 
-    public rKatex(e: Element, br: Vector) {
+    public strip(): MNode {
+        this.children[0] = this.children[0].strip();
+        this.children[1] = this.children[1].strip();
+        return this;
+    }
+
+    public bake(): MNode {
+        this.children[0] = this.children[0].bake();
+        this.children[1] = this.children[1].bake();
+        if(this.aNeedsParens()) this.children[0] = new Parentheses(this.children[0], "(", ")");
+        if(this.bNeedsParens()) this.children[1] = new Parentheses(this.children[1], "(", ")");
+        return this;
+    }
+
+    public rKatex(e: Element, br: Vector): void {
 
         while(e != null && e.children !== null && e.children.length >= 1 && e.children.length !== 5) {
             e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
@@ -48,8 +55,8 @@ abstract class binaryInfixOperator implements MNode {
             console.log(e);
         }
         const ec = e.children;
-        if(ec[2].textContent !== this.htmlSym) {
-            console.error("Expected " + this.htmlSym + " but found " + ec[2].textContent);
+        if(tutil.directTextContent(ec[2]) !== this.htmlSym) {
+            console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[2]));
         }
         
         this.e = ec[2];     
@@ -60,12 +67,20 @@ abstract class binaryInfixOperator implements MNode {
         this.children[1].rKatex(ec[4], br);
     }
 
-    public toKatex() {
-    
+    private bNeedsParens() {
+        return (this.children[1].precendence < this.precendence) 
+                    // Beware: when the operator is not associative, you  
+                    || ((this.children[1].precendence === this.precendence) && !this.isAssociative(this.children[0], this.children[1]))
+    }
+    private aNeedsParens() {
+        return this.children[0].precendence < this.precendence;
+    }
+
+    public toKatex() {    
         return "{"
-            + opar(this.children[0].toKatex(), this.children[0].precendence < this.precendence) 
+            + opar(this.children[0].toKatex(), this.aNeedsParens()) 
             + " " + this.katexCmd + " " 
-            + opar(this.children[1].toKatex(), this.children[1].precendence < this.precendence) 
+            + opar(this.children[1].toKatex(), this.bNeedsParens()) 
             + "}";
     }
 
@@ -89,7 +104,12 @@ abstract class binaryInfixOperator implements MNode {
         return null;
     }
 
-    protected abstract evalP(a: l.Literal, b :l.Literal, flags: EvalFlags): MNode;
+    // Evaluates this term
+    protected abstract evalP(a: l.Literal, b: l.Literal, flags: EvalFlags): MNode;
+
+    // Determines if the operator is associative given these nodes. If relevant, it has to determine the node's domain for itself.
+    // For example, given a = 1 and b = 2 - 3 * 5 is (1+2) - 3*5  = 1 + (2 - 3*5) ?
+    protected abstract isAssociative(a: MNode, b: MNode): boolean;
 }
 
 export class Add extends binaryInfixOperator {
@@ -101,6 +121,9 @@ export class Add extends binaryInfixOperator {
             return new l.Integer( a.getValue() + b.getValue() );
         } else throw "Addition only supported for integers";
     }
+    protected isAssociative(a: MNode, b: MNode) {
+        return true; // TODO: Not always true!
+    }
 }
 export class Sub extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
@@ -110,6 +133,9 @@ export class Sub extends binaryInfixOperator {
         if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
             return new l.Integer( a.getValue() - b.getValue() );
         } else throw "Subtraction only supported for integers";
+    }
+    protected isAssociative(a: MNode, b: MNode) {
+        return false; // TODO: Not always true!
     }
 }
 
@@ -124,6 +150,9 @@ export class Mul extends binaryInfixOperator {
             return new l.Integer( a.getValue() * b.getValue() );
         } else throw "Multiplication only supported for integers";
     }
+    protected isAssociative(a: MNode, b: MNode) {
+        return true; // TODO: Not always true!
+    }
 }
 
 // TODO: not that easy! What's about ÷,/ and frac?
@@ -136,6 +165,9 @@ export class Div extends binaryInfixOperator {
         if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
             return new l.Integer( a.getValue() / b.getValue() );
         } else throw "Division only supported for integers";
+    }
+    protected isAssociative(a: MNode, b: MNode) {
+        return false; // TODO: Not always true!
     }
 }
 

@@ -1,6 +1,5 @@
 
-import { MNode, EvalFlags, maxPrec} from "./mdom";
-import { Vector } from "./edom";
+import { Vector, MNode, EvalFlags, maxPrec} from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as util from "../util/util";
@@ -30,6 +29,13 @@ export abstract class Literal implements MNode {
         if(this.e === null) console.error("Must exist!");
         tutil.measure(this.e, br, this);
         console.log(this.e);
+    }
+    
+    public strip() {
+        return this;
+    }
+    public bake() {
+        return this;
     }
 
     public toKatex() {

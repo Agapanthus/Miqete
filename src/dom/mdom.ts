@@ -1,4 +1,22 @@
-import { ENode, Vector } from "./edom";
+export class Vector {
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+    public x: number
+    public y: number
+}
+
+
+export interface Selectable {
+    
+    // The native Element associated with this node
+    e: Element,
+
+    // Size and position of the native Element
+    size: Vector,
+    pos: Vector,
+}
 
 
 export enum SimplificationStrategy {
@@ -27,20 +45,26 @@ export interface EvalFlags {
     given: any[], // Given variables, e.g. "x=1/2" or "sin(x^2)=u_1" for substitution
 }
 
+// Add automatically-generated silent parentheses
+export function opar(inner: string, addPar: boolean) {
+    if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
+    return inner;
+}
 export interface MNode  {
 
-    // Will create an Edit-Dom from the Math-Dom
-    //buildEdom(): ENode,
+    // Returns the katex-string of this element and all its children
+    toKatex(): string,
 
+    // recursively refreshes e, size and pos for itself and all children
+    // br is the getBoundingClientRect of the parent node
+    rKatex(parent: Element, br: Vector): void,
+
+    // Removes everything semantically irrelevant
+    strip(): MNode,
+
+    // Adds stuff necessary for visualization (especially parenthesis)
+    bake(): MNode,
     
-     // Returns the katex-string of this element and all its children
-     toKatex(): string,
-
-     // recursively refreshes e, size and pos for itself and all children
-     // br is the getBoundingClientRect of the parent node
-     rKatex(parent: Element, br: Vector): void,
-
-     
     // The native Element associated with this node
     e: Element,
 

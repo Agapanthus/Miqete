@@ -2,8 +2,7 @@
 
 import * as katex from "katex";
 
-import { Vector } from "../dom/edom";
-import { MNode, SimplificationStrategy } from "../dom/mdom";
+import { MNode, SimplificationStrategy, Vector } from "../dom/mdom";
 
 
 declare const ResizeObserver: any;
@@ -11,16 +10,19 @@ declare const ResizeObserver: any;
 
 function buildDummy(node: MNode, e: Element) {
     const me = document.createElement("div");
-    me.style.width = node.size.x + "px";
-    me.style.height = node.size.y + "px";
-    me.style.left = node.pos.x + "px";
-    me.style.top = node.pos.y + "px";
+    
+    if(node.size) {
+        me.style.width = node.size.x + "px";
+        me.style.height = node.size.y + "px";
+        me.style.left = node.pos.x + "px";
+        me.style.top = node.pos.y + "px";
 
-    me.style.position = "absolute";
-    me.style.background = "rgba(100,100,255,0.2)"
-    me.style.overflow = "hidden"
-    me.style.userSelect = "initial";
-    me.style.pointerEvents = "initial";
+        me.style.position = "absolute";
+        me.style.background = "rgba(100,100,255,0.2)"
+        me.style.overflow = "hidden"
+        me.style.userSelect = "initial";
+        me.style.pointerEvents = "initial";
+    }
 
     if(node.children.length === 2) { // TODO: infix
         buildDummy(node.children[0], e);
