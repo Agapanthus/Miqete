@@ -18,6 +18,7 @@
     "test/storage/localstorage",
     "test/svg/inline",
     "test/requestanimationframe",
-    "test/dom/mutationObserver"
+    "test/dom/mutationObserver",
+    "test/eventlistener"
   ]
 }

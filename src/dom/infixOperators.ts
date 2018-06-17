@@ -1,13 +1,14 @@
 
-import { opar, MNode, Vector, EvalFlags, SimplificationStrategy } from "./mdom";
+import { opar, MNode, Vector, EvalFlags, SimplificationStrategy, Creator, Selectable } from "./mdom";
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
 
 
-abstract class binaryInfixOperator implements MNode {
+abstract class binaryInfixOperator implements MNode, Selectable {
     public e: Element
+    public s: HTMLElement
     public size: Vector
     public pos: Vector
     public children: MNode[]
@@ -30,6 +31,12 @@ abstract class binaryInfixOperator implements MNode {
         this.katexCmd = katexCmd;
         this.htmlSym = htmlSym;
     }
+    
+    public createSelectionAreas(c: Creator): void {
+        this.children[0].createSelectionAreas(c);
+        this.s = c.add(this.pos, this.size);
+        this.children[1].createSelectionAreas(c);
+    }
 
     public strip(): MNode {
         this.children[0] = this.children[0].strip();
@@ -40,12 +47,18 @@ abstract class binaryInfixOperator implements MNode {
     public bake(): MNode {
         this.children[0] = this.children[0].bake();
         this.children[1] = this.children[1].bake();
-        if(this.aNeedsParens()) this.children[0] = new Parentheses(this.children[0], "(", ")");
-        if(this.bNeedsParens()) this.children[1] = new Parentheses(this.children[1], "(", ")");
+        if(this.aNeedsParens()) {
+            this.children[0] = new Parentheses(this.children[0], "(", ")");
+            this.children[0].parent = this;
+        }
+        if(this.bNeedsParens()) {
+            this.children[1] = new Parentheses(this.children[1], "(", ")");
+            this.children[1].parent = this;
+        }
         return this;
     }
 
-    public rKatex(e: Element, br: Vector): void {
+    public rKatex(e: Element): void {
 
         while(e != null && e.children !== null && e.children.length >= 1 && e.children.length !== 5) {
             e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
@@ -61,10 +74,15 @@ abstract class binaryInfixOperator implements MNode {
         
         this.e = ec[2];     
         console.log(this.e)
-        tutil.measure(ec[2], br, this);
 
-        this.children[0].rKatex(ec[0], br);
-        this.children[1].rKatex(ec[4], br);
+        this.children[0].rKatex(ec[0]);
+        this.children[1].rKatex(ec[4]);
+    }
+    
+    public sync(br: Vector) { 
+        tutil.measure(this.e, br, this);
+        this.children[0].sync(br);
+        this.children[1].sync(br);
     }
 
     private bNeedsParens() {

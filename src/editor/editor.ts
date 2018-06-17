@@ -1,47 +1,46 @@
 
-
 import * as katex from "katex";
 
 import { MNode, SimplificationStrategy, Vector } from "../dom/mdom";
-
+import { Cursor } from "./cursor"
 
 declare const ResizeObserver: any;
 
 
-function buildDummy(node: MNode, e: Element) {
-    const me = document.createElement("div");
+import * as util from "../util/util";
+import { style } from "typestyle/lib";
+
+
+
+export namespace css {
+
     
-    if(node.size) {
-        me.style.width = node.size.x + "px";
-        me.style.height = node.size.y + "px";
-        me.style.left = node.pos.x + "px";
-        me.style.top = node.pos.y + "px";
+    export const noSelect = style({
+        
+        // IE, smart as it is, for some interactions simply ignores this
+        // TODO: Still doesn't really work in IE11. Why?
 
-        me.style.position = "absolute";
-        me.style.background = "rgba(100,100,255,0.2)"
-        me.style.overflow = "hidden"
-        me.style.userSelect = "initial";
-        me.style.pointerEvents = "initial";
-    }
+        pointerEvents: "none",
+        userSelect: "none",
+        "-moz-user-select": "none",
+        "-ms-user-select": "none",
+        "-webkit-user-select": "none",
 
-    if(node.children.length === 2) { // TODO: infix
-        buildDummy(node.children[0], e);
-        e.appendChild(me);
-        buildDummy(node.children[1], e);
-    }
-    else if(node.children.length === 3) { // TODO: big
-        buildDummy(node.children[0], e);
-        buildDummy(node.children[1], e);
-        buildDummy(node.children[2], e);
-    }
-    else if(node.children.length === 0) { // TODO: literal
-        e.appendChild(me);;
-    } else {
-        console.error("not supported");
-    }
+        $nest: {
+            "& div, & span, & svg": {
+                pointerEvents: "none",
+                userSelect: "none",
+                "-moz-user-select": "none",
+                "-ms-user-select": "none",
+                "-webkit-user-select": "none",
+            },
+           
+        }
 
-    //for(let c of node.children) buildDummy(c, e);
-}
+    });
+};
+
+
 
 export class Editor {
 
@@ -50,16 +49,19 @@ export class Editor {
 
     private mdom: MNode;
 
+    private c: Cursor;
+
     constructor(element: Element, mdom: MNode) {
       
         this.mdom = mdom;
         this.katexEle = document.createElement("div");
-        this.katexEle.style.userSelect = "none";
-        this.katexEle.style.pointerEvents = "none";
+        this.katexEle.className = css.noSelect;
 
         this.dummyEle = document.createElement("div");
         this.dummyEle.style.position = "absolute";
         this.dummyEle.style.lineHeight = "100%";
+
+        this.c = new Cursor(this.dummyEle);
 
         const pseudoPar = document.createElement("div");
         pseudoPar.style.position = "relative";
@@ -71,21 +73,21 @@ export class Editor {
         element.appendChild(pseudoPar);
         
         this.rebuildKatex();
+
+        //this.eval();
     }
 
 
     private rebuildDummy() {
         const br = new Vector(this.katexEle.getBoundingClientRect().left, this.katexEle.getBoundingClientRect().top);
-        const khtml = $(".katex-html .base", this.katexEle)[0];
-        this.mdom.rKatex(khtml, br);
+        this.mdom.sync(br);
 
-        while (this.dummyEle.firstChild) this.dummyEle.removeChild(this.dummyEle.firstChild);
-
-        buildDummy(this.mdom, this.dummyEle);
+        this.c.buildDummy(this.mdom);
 
     }
 
     private eval() {
+        this.mdom = this.mdom.strip();
         const res = this.mdom.eval({
             strategy: SimplificationStrategy.none,
             prec: 32, given: []});
@@ -99,9 +101,15 @@ export class Editor {
 
         
         const me = this;
-        if(ResizeObserver) { 
+
+        // Currently only supported in chrome
+        if(util.defined(window["ResizeObserver"])) { 
             const observer = new ResizeObserver( function(mutations) {
                 console.log("resize");
+                
+                const khtml = $(".katex-html .base", me.katexEle)[0];
+                me.mdom.rKatex(khtml);     
+                
                 me.rebuildDummy()
             
             });  
@@ -109,12 +117,20 @@ export class Editor {
         } 
                 
 
-        katex.render(kt, this.katexEle);      
+        katex.render(kt, this.katexEle); 
 
-        
-        if(!ResizeObserver) { 
+
+
+        if(!util.defined(window["ResizeObserver"])) { 
+            console.warn("Using Fallback for ResizeOberserver")
+            
+            const khtml = $(".katex-html .base", this.katexEle)[0];
+            this.mdom.rKatex(khtml);     
+
             // TODO: Is there something better in non-chrome Browsers? requestAnimationFrame and MutationObserver don't listen to such changes!
-            setTimeout(() => me.rebuildDummy(),10);         
+            setTimeout(() => me.rebuildDummy(),10);   
+            setTimeout(() => me.rebuildDummy(),100);  
+            setTimeout(() => me.rebuildDummy(),1000);         
         }
 
     }

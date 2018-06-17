@@ -1,18 +1,13 @@
-import { MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec } from "./mdom";
+import { opar, MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec, Creator, Selectable } from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
 
-function opar(inner: string, addPar: boolean) {
-    if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
-    return inner;
-}
-
-
-abstract class bigPrefixOperator implements MNode {
+abstract class bigPrefixOperator implements MNode, Selectable {
     public e: Element
+    public s: HTMLElement
     public size: Vector
     public pos: Vector
     public children: MNode[]
@@ -32,12 +27,19 @@ abstract class bigPrefixOperator implements MNode {
         body.parent = this;
         this.precendence = maxPrec;
         this.myVirtualPrec = precedence;
-        this.e = undefined;
-        this.parent = undefined;
-        this.size = undefined;
-        this.pos = undefined;
         this.katexCmd = katexCmd;
         this.htmlSym = htmlSym;
+    }
+
+    public createSelectionAreas(c: Creator): void {
+        this.s = c.add(this.pos, this.size);
+        c.push(true);
+        this.children[0].createSelectionAreas(c);
+        c.pop();
+        c.push(true);
+        this.children[1].createSelectionAreas(c);
+        c.pop();
+        this.children[2].createSelectionAreas(c);
     }
 
     public strip(): MNode {
@@ -51,11 +53,14 @@ abstract class bigPrefixOperator implements MNode {
         this.children[0] = this.children[0].bake();
         this.children[1] = this.children[1].bake();
         this.children[2] = this.children[2].bake();
-        if(this.children[2].precendence < this.myVirtualPrec) this.children[2] = new Parentheses(this.children[2], "(", ")");
+        if(this.children[2].precendence < this.myVirtualPrec) {
+            this.children[2] = new Parentheses(this.children[2], "(", ")");
+            this.children[2].parent = this;
+        }
         return this;
     }
 
-    public rKatex(e: Element, br: Vector) {
+    public rKatex(e: Element) {
 
         let lastBef = null;
         while(e && e.children && e.children.length >= 1) {
@@ -84,11 +89,17 @@ abstract class bigPrefixOperator implements MNode {
         
         this.e = tfcwc;     
         console.log(this.e)
-        tutil.measure(this.e, br, this);
 
-        this.children[0].rKatex(ec[0], br);
-        this.children[1].rKatex(ec[2], br);
-        this.children[2].rKatex(lastBef.children[2], br);
+        this.children[0].rKatex(ec[0]);
+        this.children[1].rKatex(ec[2]);
+        this.children[2].rKatex(lastBef.children[2]);
+    }
+
+    public sync(br: Vector) {
+        tutil.measure(this.e, br, this);
+        this.children[0].sync(br);
+        this.children[1].sync(br);
+        this.children[2].sync(br);
     }
 
     public toKatex() {

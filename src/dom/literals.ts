@@ -1,11 +1,12 @@
 
-import { Vector, MNode, EvalFlags, maxPrec} from "./mdom";
+import { Vector, MNode, EvalFlags, maxPrec, Creator, Selectable} from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as util from "../util/util";
 
-export abstract class Literal implements MNode {
+export abstract class Literal implements MNode, Selectable {
     public e: Element
+    public s: HTMLElement
     public size: Vector
     public pos: Vector
     public children: MNode[]
@@ -24,13 +25,20 @@ export abstract class Literal implements MNode {
         this.precendence = maxPrec;
     }
 
-    public rKatex(e: Element, br: Vector) {
+    public rKatex(e: Element) {
         this.e = tutil.tfcwc(e);
         if(this.e === null) console.error("Must exist!");
-        tutil.measure(this.e, br, this);
         console.log(this.e);
     }
-    
+
+    public sync(br: Vector) { 
+        tutil.measure(this.e, br, this);
+    }
+
+    public createSelectionAreas(c: Creator): void {
+        this.s = c.add(this.pos, this.size);
+    }
+
     public strip() {
         return this;
     }

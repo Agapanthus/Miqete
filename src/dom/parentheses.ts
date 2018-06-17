@@ -1,11 +1,12 @@
 
-import { MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec } from "./mdom";
+import { MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec, Creator, Selectable } from "./mdom";
 import * as tutil from "../traverse/util";
 import * as util from "../util/util";
 
 
-class Brace implements MNode {
+class Brace implements MNode, Selectable {
     public e: Element
+    public s: HTMLElement
     public size: Vector
     public pos: Vector
     public children: MNode[]
@@ -26,6 +27,10 @@ class Brace implements MNode {
         this.brace = brace;
     }
 
+    public createSelectionAreas(c: Creator): void {
+        this.s = c.add(this.pos, this.size);
+    }
+
     public strip(): MNode {
         console.error("Never call!");
         return null;
@@ -35,10 +40,13 @@ class Brace implements MNode {
         return null;
     }
 
-    public rKatex(e: Element, br: Vector) {
+    public rKatex(e: Element) {
         this.e = tutil.tfcwc(e);
         if(this.e === null) console.error("Must exist!");
         if(tutil.directTextContent(this.e) !== this.brace) console.error("Expected "+ this.brace + " but found " + tutil.directTextContent(this.e));
+    }
+
+    public sync(br: Vector) { 
         tutil.measure(this.e, br, this);
     }
 
@@ -54,9 +62,8 @@ class Brace implements MNode {
 }
 
 export class Parentheses implements MNode {
-    public e: Element
-    public size: Vector
-    public pos: Vector
+    private e: Element
+    public s: HTMLElement
     public children: MNode[]
     public parent: MNode
     public precendence: number;
@@ -80,11 +87,16 @@ export class Parentheses implements MNode {
         this.precendence = maxPrec;
         this.e = undefined;
         this.parent = undefined;
-        this.size = undefined;
-        this.pos = undefined;
+    }
+
+    public createSelectionAreas(c: Creator): void {
+        this.children[0].createSelectionAreas(c);
+        this.children[1].createSelectionAreas(c);
+        this.children[2].createSelectionAreas(c);
     }
 
     public strip(): MNode {
+        this.children[1].parent = this.parent;
         return this.children[1];
     }
 
@@ -93,7 +105,7 @@ export class Parentheses implements MNode {
         return this;
     }
     
-    public rKatex(e: Element, br: Vector) {
+    public rKatex(e: Element) {
         while(e != null && e.children !== null && e.children.length >= 1 && e.children.length !== 3) {
             e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
         }
@@ -111,9 +123,16 @@ export class Parentheses implements MNode {
 
         this.e = e;     
         
-        this.children[0].rKatex(ec[0], br);
-        this.children[1].rKatex(ec[1], br);
-        this.children[2].rKatex(ec[2], br);
+        this.children[0].rKatex(ec[0]);
+        this.children[1].rKatex(ec[1]);
+        this.children[2].rKatex(ec[2]);
+    }
+
+    
+    public sync(br: Vector) { 
+        this.children[0].sync(br);
+        this.children[1].sync(br);
+        this.children[2].sync(br);
     }
 
     public toKatex(): string {

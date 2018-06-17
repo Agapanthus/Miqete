@@ -40,8 +40,11 @@ const buildGUI: () => void = () => {
 window.onload = ()=> {
   enableJS();
 
+  // https://github.com/Modernizr/Modernizr/issues/1687
   if(!Modernizr.csstransitions) alert("TODO: Error: Transition");
   if(!Modernizr.svg) alert("TODO: Error: SVG");
+  if(!Modernizr.eventlistener) alert("TODO: Error: eventlistener");
+
   //if(!Modernizr.mutationobserver) alert("TODO: Error: MutationObserver");
   //if(!Modernizr.requestanimationframe) alert("TODO: Error: Request Animation Frame");
 
