@@ -5,14 +5,15 @@ import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
 
-abstract class bigPrefixOperator implements MNode, Selectable {
+abstract class bigPrefixOperator extends MNode implements Selectable {
     public e: Element
     public s: HTMLElement
     public size: Vector
     public pos: Vector
-    public children: MNode[]
-    public parent: MNode
-    public precendence: number;
+
+    public precendence(): number {
+        return maxPrec;
+    }
     
     private katexCmd;
     private htmlSym;
@@ -21,11 +22,12 @@ abstract class bigPrefixOperator implements MNode, Selectable {
     private myVirtualPrec: number; 
 
     constructor(bottom: MNode, top: MNode, body: MNode, katexCmd: string, htmlSym: string, precedence: number) {
-        this.children = [bottom, top, body];
-        bottom.parent = this;
-        top.parent = this;
-        body.parent = this;
-        this.precendence = maxPrec;
+        super();
+
+        this.setChild(bottom, 0);
+        this.setChild(top, 1);
+        this.setChild(body, 2);
+        
         this.myVirtualPrec = precedence;
         this.katexCmd = katexCmd;
         this.htmlSym = htmlSym;
@@ -34,28 +36,28 @@ abstract class bigPrefixOperator implements MNode, Selectable {
     public createSelectionAreas(c: Creator): void {
         this.s = c.add(this.pos, this.size);
         c.push(true);
-        this.children[0].createSelectionAreas(c);
+        this.child(0).createSelectionAreas(c);
         c.pop();
         c.push(true);
-        this.children[1].createSelectionAreas(c);
+        this.child(1).createSelectionAreas(c);
         c.pop();
-        this.children[2].createSelectionAreas(c);
+        this.child(2).createSelectionAreas(c);
     }
 
     public strip(): MNode {
-        this.children[0] = this.children[0].strip();
-        this.children[1] = this.children[1].strip();
-        this.children[2] = this.children[2].strip();
+        this.setChild(this.child(0).strip(), 0);
+        this.setChild(this.child(1).strip(), 1);
+        this.setChild(this.child(2).strip(), 2);
         return this;
     }
 
     public bake(): MNode {
-        this.children[0] = this.children[0].bake();
-        this.children[1] = this.children[1].bake();
-        this.children[2] = this.children[2].bake();
-        if(this.children[2].precendence < this.myVirtualPrec) {
-            this.children[2] = new Parentheses(this.children[2], "(", ")");
-            this.children[2].parent = this;
+        this.setChild(this.child(0).bake(), 0);
+        this.setChild(this.child(1).bake(), 1);
+        this.setChild(this.child(2).bake(), 2);
+
+        if(this.child(2).precendence() < this.myVirtualPrec) {
+            this.setChild(new Parentheses(this.child(2), "(", ")"), 2);
         }
         return this;
     }
@@ -90,36 +92,36 @@ abstract class bigPrefixOperator implements MNode, Selectable {
         this.e = tfcwc;     
         console.log(this.e)
 
-        this.children[0].rKatex(ec[0]);
-        this.children[1].rKatex(ec[2]);
-        this.children[2].rKatex(lastBef.children[2]);
+        this.child(0).rKatex(ec[0]);
+        this.child(1).rKatex(ec[2]);
+        this.child(2).rKatex(lastBef.children[2]);
     }
 
     public sync(br: Vector) {
         tutil.measure(this.e, br, this);
-        this.children[0].sync(br);
-        this.children[1].sync(br);
-        this.children[2].sync(br);
+        this.child(0).sync(br);
+        this.child(1).sync(br);
+        this.child(2).sync(br);
     }
 
     public toKatex() {
     
         return "{" + this.katexCmd
-            + "_{" + this.children[0].toKatex() +  "}"
-            + "^{" + this.children[1].toKatex() +  "}"
-            + opar(this.children[2].toKatex(), this.children[2].precendence < this.myVirtualPrec) 
+            + "_" + this.child(0).toKatex() +  " "
+            + "^" + this.child(1).toKatex() +  " "
+            + opar(this.child(2).toKatex(), this.child(2).precendence() < this.myVirtualPrec) 
             + "}";
     }
 
     public eval(flags: EvalFlags): MNode {
         try {
-            const b = this.children[0].eval(flags);
-            const t = this.children[1].eval(flags);
+            const b = this.child(0).eval(flags);
+            const t = this.child(1).eval(flags);
             
             switch(flags.strategy) {
                 case SimplificationStrategy.none:
                     if(b instanceof l.Literal && t instanceof l.Literal) {
-                        return this.evalP(b, t, this.children[2], flags);
+                        return this.evalP(b, t, this.child(2), flags);
                     }
                 break;
                 default: console.error("not impl");

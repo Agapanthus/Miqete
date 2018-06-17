@@ -4,25 +4,22 @@ import * as tutil from "../traverse/util";
 import * as util from "../util/util";
 
 
-class Brace implements MNode, Selectable {
+class Brace extends MNode implements Selectable {
     public e: Element
     public s: HTMLElement
     public size: Vector
     public pos: Vector
-    public children: MNode[]
-    public parent: MNode
-    public precendence: number;
+    
+    public precendence(): number {
+        return maxPrec;
+    }
 
     private isRight: boolean;
     private brace: string;
 
     constructor(isRight: boolean, brace: string) {
-        this.children = [];
-        this.precendence = maxPrec;
-        this.e = undefined;
-        this.parent = undefined;
-        this.size = undefined;
-        this.pos = undefined;
+        super();
+
         this.isRight = isRight;
         this.brace = brace;
     }
@@ -61,17 +58,20 @@ class Brace implements MNode, Selectable {
     }
 }
 
-export class Parentheses implements MNode {
+export class Parentheses extends MNode {
     private e: Element
     public s: HTMLElement
-    public children: MNode[]
-    public parent: MNode
-    public precendence: number;
+
+    public precendence(): number {
+        return maxPrec;
+    }
 
     private open: Brace;
     private close: Brace;
 
     constructor(a: MNode, open: string, close: string) {
+        super();
+
         this.open = new Brace(false, open);
         this.close = new Brace(true, close);
 
@@ -79,29 +79,24 @@ export class Parentheses implements MNode {
             console.warn("TODO: might be an interval, abs, the skalar product or something like that...");
         }
 
-        this.children = [this.open, a, this.close];
-        a.parent = this;
-        this.open.parent = this;
-        this.close.parent = this;
-
-        this.precendence = maxPrec;
-        this.e = undefined;
-        this.parent = undefined;
+        this.setChild(this.open, 0);
+        this.setChild(a, 1);
+        this.setChild(this.close, 2);
     }
 
     public createSelectionAreas(c: Creator): void {
-        this.children[0].createSelectionAreas(c);
-        this.children[1].createSelectionAreas(c);
-        this.children[2].createSelectionAreas(c);
+        this.child(0).createSelectionAreas(c);
+        this.child(1).createSelectionAreas(c);
+        this.child(2).createSelectionAreas(c);
     }
 
     public strip(): MNode {
-        this.children[1].parent = this.parent;
-        return this.children[1];
+        this.child(1).setParent__INTERNAL(this.getParent());
+        return this.child(1);
     }
 
     public bake(): MNode {
-        this.children[1] = this.children[1].bake();
+        this.setChild(this.child(1).bake(), 1);
         return this;
     }
     
@@ -123,26 +118,26 @@ export class Parentheses implements MNode {
 
         this.e = e;     
         
-        this.children[0].rKatex(ec[0]);
-        this.children[1].rKatex(ec[1]);
-        this.children[2].rKatex(ec[2]);
+        this.child(0).rKatex(ec[0]);
+        this.child(1).rKatex(ec[1]);
+        this.child(2).rKatex(ec[2]);
     }
 
     
     public sync(br: Vector) { 
-        this.children[0].sync(br);
-        this.children[1].sync(br);
-        this.children[2].sync(br);
+        this.child(0).sync(br);
+        this.child(1).sync(br);
+        this.child(2).sync(br);
     }
 
     public toKatex(): string {
-        return "{" + this.children[0].toKatex()
-            + this.children[1].toKatex()
-            + this.children[2].toKatex() + "}";
+        return "{" + this.child(0).toKatex()
+            + this.child(1).toKatex()
+            + this.child(2).toKatex() + "}";
     }
 
     public eval(flags: EvalFlags): MNode {
-        return this.children[0].eval(flags);
+        return this.child(0).eval(flags);
     }
 
 }

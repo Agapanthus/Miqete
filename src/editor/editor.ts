@@ -75,6 +75,7 @@ export class Editor {
         this.rebuildKatex();
 
         //this.eval();
+
     }
 
 

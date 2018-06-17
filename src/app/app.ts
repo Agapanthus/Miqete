@@ -14,6 +14,7 @@ import * as bo from "../dom/bigOperators";
 import * as l from "../dom/literals";
 
 import * as $ from "jquery";
+import { mPrint } from "../dom/util";
 
 
 const _body: (a: string) => string = (a) => `<div class='${body.body}'>${a}</div>`;
@@ -29,10 +30,12 @@ const buildGUI: () => void = () => {
 
   const element = document.getElementById("testeri");
 
+  const sum = new l.Integer(2); // new bo.Sum( new l.Integer(6), new io.Add(new l.Integer(6), new l.Integer(6)), new l.Integer(2));
+
   const mdom = (new bo.Sum( new l.Integer(2), new l.Integer(3), 
-        new io.Mul( new io.Add(new io.Sub(new l.Integer(2), new l.Integer(3) ), new l.Integer(7)), new l.Integer(5))
+        new io.Mul( new io.Add(new io.Add( new io.Add(new io.Add(new l.Integer(1), sum ), new io.Mul(new l.Integer(3), new l.Integer(3))), new l.Integer(4)), new l.Integer(5)), new l.Integer(2))
       )).bake();
-  
+
   new Editor(element, mdom);
 
 };
