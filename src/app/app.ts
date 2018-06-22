@@ -17,6 +17,20 @@ import * as $ from "jquery";
 import { mPrint } from "../dom/util";
 
 
+const  _mathWorker = require("../math/math.worker.js");
+const mathWorker = new _mathWorker();
+
+mathWorker.postMessage("231");
+
+mathWorker.onmessage = function (event) {
+  console.log("Math:", event.data);
+};
+
+mathWorker.onerror = function (err) {
+  console.error(err);
+};
+
+
 const _body: (a: string) => string = (a) => `<div class='${body.body}'>${a}</div>`;
 
 const buildGUI: () => void = () => {
@@ -30,13 +44,13 @@ const buildGUI: () => void = () => {
 
   const element = document.getElementById("testeri");
 
-  const sum = new l.Integer(2); // new bo.Sum( new l.Integer(6), new io.Add(new l.Integer(6), new l.Integer(6)), new l.Integer(2));
+  const sum =  new bo.Sum( new l.Integer(6), new io.Add(new l.Integer(6), new l.Integer(6)), new l.Integer(2));
 
   const mdom = (new bo.Sum( new l.Integer(2), new l.Integer(3), 
         new io.Mul( new io.Add(new io.Add( new io.Add(new io.Add(new l.Integer(1), sum ), new io.Mul(new l.Integer(3), new l.Integer(3))), new l.Integer(4)), new l.Integer(5)), new l.Integer(2))
       )).bake();
 
-  new Editor(element, mdom);
+//  new Editor(element, mdom);
 
 };
 

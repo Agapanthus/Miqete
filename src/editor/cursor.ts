@@ -334,6 +334,8 @@ export class Cursor {
             let lHead = Cursor.getChildBelowTopmostContinuedSeriesOfOperators(common, L);
             let rHead = Cursor.getChildBelowTopmostContinuedSeriesOfOperators(common, R);
 
+            // TODO: This is still to specific. We need a class "Associative Operator", because
+            //     sum(x*y) = (sum x)*y
 
             while(true) {
                 // If child is leftmost of the common ancestor - done!

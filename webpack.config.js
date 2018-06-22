@@ -24,7 +24,7 @@ module.exports = {
   },
   devtool: 'source-map',
   resolve: {
-    extensions: ['.webpack.js', '.web.js', '.ts', '.js'],
+    extensions: ['.webpack.js', '.web.js', '.ts', '.js', '.elm'],
     alias: {
       modernizr$: path.resolve(__dirname, ".modernizrrc")
     }
@@ -33,6 +33,26 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.worker\.js$/,
+        use:
+        {
+          loader: 'worker-loader',
+          options: { name: "math.worker.compiled.js"}
+        }
+      }
+      ,{
+        test: /\.elm$/,
+        exclude: [/elm-stuff/, /node_modules/],
+        use: [{
+            loader: 'elm-webpack-loader',
+            options: {
+                verbose: true,
+                warn: true,
+                debug: true
+            }
+        }]
+      }
+      ,{
         test: /\.(png|jp(e*)g|svg)$/,  
         use: [{
             loader: 'url-loader',
@@ -63,11 +83,11 @@ module.exports = {
             presets: ["es2015"]
           }
         }
-      },
-      {
+      }
+      ,{
           test: /\.(eot|svg|ttf|woff|woff2)$/,
           loader: 'file-loader?name=public/fonts/[name].[ext]'
-      }   
+      }
     ]
   },
   externals: {
