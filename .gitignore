@@ -17,9 +17,7 @@ fhaskell.dir
 CMakeCache.txt
 *.wasm
 *.pch
+typings
 mathquill-matrix
 hide
 public
-elm-stuff
-workers
-math.worker.compiled.*
