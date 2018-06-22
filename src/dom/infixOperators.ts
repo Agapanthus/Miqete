@@ -186,7 +186,7 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
     // Evaluates this term
     protected abstract evalP(a: l.Literal, b: l.Literal, flags: EvalFlags): MNode;
 
-    // Determines if the operator is associative given these nodes. Implementation has to determine the node's field!
+    // Determines if the operator is associative given these nodes. Implementation has to determine the node's AlgebraicStructure!
     // For example, given a = 1 and b = 2 - 3 * 5 is (1+2) - 3*5  = 1 + (2 - 3*5) ?
     protected abstract isABAssociative(a: MNode, b: MNode): boolean;
 
