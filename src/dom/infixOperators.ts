@@ -1,6 +1,6 @@
 
-import { opar, MNode, Vector, Creator, Selectable } from "./mdom";
-import * as tutil from "../traverse/util";
+import { MNode, Vector, Creator, Selectable } from "./mdom";
+import * as tutil from "./util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
@@ -144,18 +144,18 @@ export class binaryInfixOperator extends MNode {
         }
         const ec = e.children;
         if(e.children.length === 5) {
-            if(tutil.directTextContent(ec[2]) !== this.htmlSym) {
+           /* if(tutil.directTextContent(ec[2]) !== this.htmlSym) {
                 console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[2]));
-            }
+            }*/
             
             this.child(2).rKatex(ec[2]);
             this.child(0).rKatex(ec[0]);
             this.child(1).rKatex(ec[4]);
 
         } else {
-            if(tutil.directTextContent(ec[1]) !== this.htmlSym) {
+           /* if(tutil.directTextContent(ec[1]) !== this.htmlSym) {
                 console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[1]));
-            }
+            }*/
             
             this.child(2).rKatex(ec[1]);
             this.child(0).rKatex(ec[0]);
@@ -180,9 +180,9 @@ export class binaryInfixOperator extends MNode {
 
     public toKatex() {    
         return "{"
-            + opar(this.child(0).toKatex(), this.aNeedsParens()) 
-            + " " + this.child(2).toKatex() + " "
-            + opar(this.child(1).toKatex(), this.bNeedsParens()) 
+            + tutil.opar(this.child(0).toKatex(), this.aNeedsParens()) 
+            + this.child(2).toKatex() 
+            + tutil.opar(this.child(1).toKatex(), this.bNeedsParens()) 
             + "}";
     }
 

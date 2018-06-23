@@ -1,21 +1,9 @@
 import * as base64js from "base64-js";
-import { TextDecoderLite, TextEncoderLite } from "./textencoderlite";
 import * as $ from "jquery";
 
 
 export function defined(variable: any) {
     return !(typeof variable === 'undefined');
-}
-
-// Base64 mit Unicode!!!
-export function Base64Encode(str, encoding = 'utf-8') {
-    var bytes = new TextEncoderLite().encode(str);        
-    return base64js.fromByteArray(bytes);
-}
-
-export function Base64Decode(str, encoding = 'utf-8') {
-    var bytes = base64js.toByteArray(str);
-    return new TextDecoderLite().decode(bytes);
 }
 
 /*

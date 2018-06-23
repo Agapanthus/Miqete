@@ -61,7 +61,8 @@ export class Editor {
         this.dummyEle.style.position = "absolute";
         this.dummyEle.style.lineHeight = "100%";
 
-        this.c = new Cursor(this.dummyEle);
+        const me = this;
+        this.c = new Cursor(this.dummyEle, (mdom: MNode) => (me.mdom=mdom, me.rebuildKatex()) );
 
         const pseudoPar = document.createElement("div");
         pseudoPar.style.position = "relative";
@@ -85,6 +86,8 @@ export class Editor {
     }
 
 
+    private oberserving: boolean
+
     private rebuildKatex() {
         const kt = "\\displaystyle" + this.mdom.toKatex();
         console.log(kt);
@@ -94,16 +97,20 @@ export class Editor {
 
         // Currently only supported in chrome
         if(util.defined(window["ResizeObserver"])) { 
-            const observer = new ResizeObserver( function(mutations) {
-                console.log("resize");
+            if(!this.oberserving) {
+                this.oberserving = true;
+
+                const observer = new ResizeObserver( function(mutations) {
+                   // console.log("resize");
+                    
+                    const khtml = $(".katex-html .base", me.katexEle)[0];
+                    me.mdom.rKatex(khtml);     
+                    
+                    me.rebuildDummy()
                 
-                const khtml = $(".katex-html .base", me.katexEle)[0];
-                me.mdom.rKatex(khtml);     
-                
-                me.rebuildDummy()
-            
-            });  
-            observer.observe(this.katexEle);
+                });  
+                observer.observe(this.katexEle);
+            }
         } 
                 
 

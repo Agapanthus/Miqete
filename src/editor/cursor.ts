@@ -2,16 +2,38 @@
 import {style, keyframes, types, media } from 'typestyle';
 
 
-import { Creator, MNode, Vector } from "../dom/mdom";
+import { Creator, MNode, Vector, Selectable } from "../dom/mdom";
 import {  findCommonAncestor, mMap, findChild, mPrint } from "../dom/util";
 
 import * as util from "../util/util";
 import { assoRotateLeft, binaryInfixOperator, assoRotateRight } from '../dom/infixOperators';
 
+import * as pa from "../dom/parentheses";
+import * as io from "../dom/infixOperators";
+import * as bo from "../dom/bigOperators";
+import * as li from "../dom/input";
+import * as tutil from "../dom/util";
+
 
 export namespace css {
+  
+    const blink = keyframes({
+        "0%": { borderColor: "black" },
+        "50%": { borderColor: "black" },
+        "51%": { borderColor: "transparent" },
+        "99%": { borderColor: "transparent"},
+        "100%": { borderColor: "black" }
+    });
+      
+    export const cursorLeft = style({
+        width: "1px",
+        height: "10px",
+        position: "absolute",
+        borderLeft: "1px solid transparent",
+        animation: blink + " 1s infinite",
+        marginLeft: "-1px"
+    });
 
-    
     export const dummyNode = style({
         color: "rgba(0,0,0,0)",
 
@@ -21,7 +43,7 @@ export namespace css {
         "-ms-user-select": "auto",
         "-webkit-user-select": "auto",
         overflow: "hidden",
-        background:  "rgba(100,100,255,0.2)", // Use this for debugging
+       // background:  "rgba(100,100,255,0.2)", // Use this for debugging
 
         position: "absolute",
         cursor: "text",
@@ -40,6 +62,9 @@ export namespace css {
             "&.selected": {
                 background: "rgba(255,180,100,0.3)",
 
+            },
+            "&:focus": {
+                outline: "none"
             }
         }
     });
@@ -50,22 +75,30 @@ export namespace css {
 }
 
 interface Creator_level {
-    topleft: Vector;
-    bottomright: Vector;
-    fill: boolean;
+    topleft: Vector
+    bottomright: Vector
+    fill: boolean
 
-    lastPos: Vector;
-    lastEle: HTMLElement;
+    lastPos: Vector
+    lastEle: HTMLElement
+
+    layerIndex: number
 }
+
 
 class Creator_impl extends Creator {
 
     private stack: Creator_level[];
     private ele: Element;
+    
+    private onInput: (e: KeyboardEvent) => void;
+    private onClick: (e: MouseEvent) => void;
+    
+    private layerIndex: number;
 
     constructor() {
         super();
-        this.start(null);
+        this.start(null, null, null);
     }
 
     private insertElement(pos: Vector): HTMLElement {
@@ -77,6 +110,13 @@ class Creator_impl extends Creator {
 
         me.style.left = pos.x + "px";
         me.style.top = pos.y + "px";
+
+        me.tabIndex = 0;
+
+        me.setAttribute("layer", ""+ this.stack[this.stack.length - 1].layerIndex);
+
+        me.onclick = this.onClick;
+        me.onkeydown = this.onInput;
     
 
         this.ele.appendChild(me);
@@ -128,8 +168,10 @@ class Creator_impl extends Creator {
             bottomright: null,
             fill: fill,
             lastPos: null,
-            lastEle: null
+            lastEle: null,
+            layerIndex: this.layerIndex
         });
+        this.layerIndex++;
     }
 
     public pop(): void {
@@ -150,8 +192,11 @@ class Creator_impl extends Creator {
     }
 
     // Create new dummy
-    public start(ele: Element) {
+    public start(ele: Element, onInput, onClick) {
+        this.onInput = onInput;
+        this.onClick = onClick;
         this.stack = [];
+        this.layerIndex = 0;
         this.ele = ele;
         if(this.ele)
             while (this.ele.firstChild) this.ele.removeChild(this.ele.firstChild);
@@ -180,16 +225,24 @@ export class Cursor {
 
     private dummyEle: HTMLElement;
 
-    constructor(dummyEle: HTMLElement) {
+    private onRefresh: (mdom: MNode)=>void;
+
+
+    private selection: MNode;
+    private cursor: MNode;
+
+
+    constructor(dummyEle: HTMLElement, onRefresh: (mdom: MNode)=>void ) {
         this.crea = new Creator_impl();
+
+        this.onRefresh = onRefresh;
 
         this.dummyEle = dummyEle;
         
         const me = this;
         if(util.defined(document.onselectionchange)) {
-            document.onselectionchange = e => {
-                me.sCall();
-            };
+            document.onselectionchange = me.sCall;
+            
         // Fallback for opera mini
         } else {
             console.warn("Using Fallback for onselectionchange");
@@ -219,23 +272,28 @@ export class Cursor {
 
     }
 
+    private dropNextSCall: boolean = false;
+
     private sCall: ()=>void = () => {
         const me = this;
+
+        if(this.dropNextSCall) {
+            this.dropNextSCall = false;
+            return;
+        }
         
-        // TODO: Set selection on release, to place the touch-handles on the right place
+        // TODO: Set selection on release, to place the touch-handles in the right place
 
         if(!me.mdom) {
             console.warn("no dom!");
             return;
         } 
 
-        // Reset selection
-        mMap(me.mdom, (a) => ((a as any).s ? ((a as any).s.className = css.dummyNode) : null, a) );
-
         if(!util.defined(window.getSelection)) alert("TODO: getSelection not found!");
 
         const selObj = window.getSelection(); 
         if(selObj.rangeCount === 0) {
+            this.select(null);
             // Remove selection
         }
         else {
@@ -243,8 +301,9 @@ export class Cursor {
             const selRange = selObj.getRangeAt(0);
 
             if(selRange.toString().length === 0) { //selRange.endContainer === selRange.startContainer) {
-                // Remove selection
-                // TODO: Set cursor!
+                // Remove selection, set Cursor
+
+                //this.select(null); // Don't do it. Cursor detection is already done
             } else {
 
                 let start = selRange.startContainer as HTMLElement;
@@ -275,14 +334,12 @@ export class Cursor {
 
                 // Selections starts and ends outside -> Possibly everything, possibly nothing. Anyway, not my business.
                 } else {
-
+                    this.select(null);
                 }
             }
         }
     };
 
-    
-    
 
     // BIO? yes        yes   no    yes   no    no
     //      common --- a --- b --- c --- d --- child
@@ -304,6 +361,80 @@ export class Cursor {
         return head;
     };
         
+
+   
+
+    private select(e: MNode) {
+        
+        // Reset selection
+        mMap(this.mdom, (a) => ((a as any).s ? ((a as any).s.className = css.dummyNode) : null, a) );
+
+        if(e) {
+            
+            // Set selection
+            mMap(e, (a) => {
+                if((a as any).s) {
+                    
+                    // TODO: set selection!
+                    //browserAddSelection((a as any).s);
+                    (a as any).s.className = css.dummyNode + " selected";
+                }
+                return a;
+            });
+
+        } else {
+            this.dropNextSCall = true;
+            browserSelectNothing();
+        }
+
+        this.selection = e;
+        this.cursor = null;
+    }
+
+    private setCursor(e: MNode) {
+        this.select(null);
+
+        if(util.defined((e as any).s)) {
+            (e as any).s.className +=  " " + css.cursorLeft;
+            (e as any).s.focus();
+        }
+
+
+        this.selection = null;
+        this.cursor = e;
+    }
+
+    
+    private onClickSetCursor = (e: MouseEvent): any => {
+
+        // If something is selected, ignore clicks
+        if(windowGetSelection().length > 0) {
+            return;
+        }
+
+
+        let c = findChild(this.mdom, a => ( (a as any).s === e.currentTarget) );
+        if(!c) {
+            console.warn("child not found!");
+            return;
+        }
+
+        const cr = e.srcElement.getBoundingClientRect();
+        
+        if((e.pageX - $(e.srcElement).offset().left) >= cr.width/2-1) {
+            const i = tutil.getVisualIndex(c, this.dummyEle);
+           
+            const nc = tutil.getNextInSameLayer(i, this.mdom, this.dummyEle);
+            if(nc === c) {
+                console.warn("TODO: Go to the end");
+            } else c = nc;
+            
+        }
+
+        this.setCursor(c);
+    };
+
+
     private selectRange(start: HTMLElement, end: HTMLElement): void {
         
         const L = findChild(this.mdom, (a) => (a as any).s === start);
@@ -391,17 +522,211 @@ export class Cursor {
         }
 
         
-        mMap(common, (a) => ((a as any).s ? ((a as any).s.className = css.dummyNode + " selected") : null, a) );
-        
+        this.select(common);
+
     }
+
+    
+    private onInput = (e: KeyboardEvent): any => {
+        console.log(e.key);
+        
+        const c = findChild(this.mdom, a => ( (a as any).s === e.currentTarget) );
+        if(!c) {
+            console.warn("child not found!");
+            return;
+        }
+
+        
+        let changed = null;
+        const p = c.getParent();
+        const nc = p ? c : this.mdom;
+
+        /*
+        How to input something:
+
+        -> travel (from the left element) upwards in the dom while the current element is "protected" (so, dont edit a infixOperators infix Symbol)
+        -> ask this element if it has any special plans (>=, multi-char literal, matrix) with this input; 
+            it might return 
+                continue with this element 
+                continue with the given element (it must be called, but must not redirect another time)
+                drop the input
+                everything is done, refresh katex
+        -> analyze input: what to insert or to do with it?
+        -> travel upwards in the dom while the current element has higher precedence and traveling upwards wouldn't change 
+           beeing the rightmost element (so that there won't appear parentheses)
+        -> now simply insert this element
+
+
+        What about prefix negation and stuff?
+        -> simply use the normal infixOperator for this. It will hide placeHolder if left to it is nothing or parentheses, e.g.
+            x^-1, x+(-1) and R^+
+        are absolutely ok
+        */
+
+        
+        switch(e.key) {
+            case "Backspace":
+                console.warn("TODO: backspace")
+            break;
+            case "Delete":
+                console.warn("TODO: delete")
+            break;
+            case "ArrowLeft":
+                if(e.shiftKey) {
+                    console.warn("TODO: Left")
+                } else {
+                    const i = tutil.getVisualIndex(this.cursor, this.dummyEle);
+                    if(i === 0) {
+                        // TODO: Callback: Exit to the left
+                    } else if(i > 0) {
+                        const nc = tutil.getByVisualIndex(i - 1, this.mdom, this.dummyEle);
+                        if(nc) {
+                            this.setCursor(nc);
+                        }
+                    }
+                }
+            break;
+            case "ArrowRight":
+                if(e.shiftKey) {
+                    console.warn("TODO: Right")
+
+                } else {
+                    const i = tutil.getVisualIndex(this.cursor, this.dummyEle);
+                    if(i >= this.dummyEle.children.length - 1) {
+                        // TODO: Callback: Exit to the right
+                    } else if(i >= 0) {
+                        const nc = tutil.getByVisualIndex(i + 1, this.mdom, this.dummyEle);
+                        if(nc) {
+                            this.setCursor(nc);
+                        }
+                    }
+                }
+            break;
+            case "ArrowUp":
+                console.warn("TODO: Up")
+                if(e.shiftKey) {
+                    
+                }
+            break;
+            case "ArrowDown":
+                console.warn("TODO: Down")
+                if(e.shiftKey) {
+
+                }
+            break;
+            case "Home":
+                console.warn("TODO: Pos1")
+            break;
+            case "End":
+                console.warn("TODO: End")
+            break;
+            
+            case "Enter":
+                console.warn("TODO: Enter")
+            break;
+            
+            case " ":
+                console.warn("TODO: Space")
+                if(e.shiftKey || e.ctrlKey) {
+
+                }
+            break;
+
+            default:            
+                if( util.hasElement(e.key, ["*", "+", "-"])) { // Insert binary Operator
+                    const inputToCmd = {"*": "\\cdot", "+": "+", "-": "-" };
+                    changed = new io.binaryInfixOperator(new li.Placeholder(), nc, inputToCmd[e.key]);
+                }
+                else if( util.hasElement(e.key, ["("])) { // Insert Parentheses
+                     
+                }
+                else if(e.key.length === 1 && isAlphaNumeric(e.key)) {
+                    let insert = e.key;
+                    changed = new li.LeftInput(nc, insert);
+                }
+                    
+            
+        }
+
+        if(changed)  {      
+            if(p) {
+                const i = p.getIndex(c);
+                p.setChild(changed, i);
+                this.onRefresh(this.mdom);
+            } else {
+                this.mdom = changed;
+                this.onRefresh(this.mdom);
+            }
+        }
+    };
 
     public buildDummy(mdom: MNode) {
 
         this.mdom = mdom;
 
-        this.crea.start(this.dummyEle);
+        this.crea.start(this.dummyEle, this.onInput, this.onClickSetCursor);
         mdom.createSelectionAreas(this.crea);
         this.crea.finish();
 
+        // Recover selection
+        if(this.selection) this.select(this.selection);
+        if(this.cursor) this.setCursor(this.cursor);
     }
+} 
+
+
+// https://stackoverflow.com/a/25352300/6144727
+function isAlphaNumeric(str) {
+    var code, i, len;
+  
+    for (i = 0, len = str.length; i < len; i++) {
+      code = str.charCodeAt(i);
+      if (!(code > 47 && code < 58) && // numeric (0-9)
+          !(code > 64 && code < 91) && // upper alpha (A-Z)
+          !(code > 96 && code < 123)) { // lower alpha (a-z)
+        return false;
+      }
+    }
+    return true;
+};
+
+// TODO: Doesn't work!
+// https://stackoverflow.com/a/4183448/6144727
+function browserAddSelection(el: HTMLElement) {
+        if (window.getSelection && document.createRange) {
+            var sel = window.getSelection();
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            //sel.removeAllRanges();
+            sel.addRange(range);
+        } else if ((document as any).selection && (document.body as any).createTextRange) {
+            alert("TODO: Selection not supported");
+
+            var textRange = (document.body as any).createTextRange();
+            textRange.moveToElementText(el);
+            textRange.select();
+        }
+    }
+
+// https://stackoverflow.com/a/3169849/6144727
+function browserSelectNothing() {
+    if (window.getSelection) {
+        if (window.getSelection().empty) {  // Chrome
+            window.getSelection().empty();
+        } else if (window.getSelection().removeAllRanges) {  // Firefox
+            window.getSelection().removeAllRanges();
+        }
+    } else if ((document as any).selection) {  // IE?
+        (document as any).selection.empty();
+    }
+}
+
+function windowGetSelection() {
+    var text = "";
+    if (typeof window.getSelection != "undefined") {
+        text = window.getSelection().toString();
+    } else if (typeof (document as any).selection != "undefined" && (document as any).selection.type == "Text") {
+        text = (document as any).selection.createRange().text;
+    }
+    return text;
 }

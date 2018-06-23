@@ -1,7 +1,7 @@
 
 import { Vector, MNode, maxPrec, Creator, Selectable} from "./mdom";
 
-import * as tutil from "../traverse/util";
+import * as tutil from "./util";
 import * as util from "../util/util";
 
 export abstract class Literal extends MNode implements Selectable {
@@ -25,7 +25,7 @@ export abstract class Literal extends MNode implements Selectable {
     public rKatex(e: Element) {
         this.e = tutil.tfcwc(e);
         if(this.e === null) console.error("Must exist!");
-        console.log(this.e);
+       // console.log(this.e);
     }
 
     public getSValue(): string {

@@ -9,25 +9,19 @@ export class Vector {
 }
 
 
-export interface Selectable {
+export class Selectable {
     
     // The native Element associated with this node
-    e: Element,
+    public e: Element
 
     // The selector-element
-    s: HTMLElement,
+    public s: HTMLElement
 
     // Size and position of the native Element
-    size: Vector,
-    pos: Vector,
+    public size: Vector
+    public pos: Vector
 }
 
-
-// Add automatically-generated silent parentheses
-export function opar(inner: string, addPar: boolean) {
-    if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
-    return inner;
-}
 
 
 export abstract class Creator {

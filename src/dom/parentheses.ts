@@ -1,6 +1,6 @@
 
 import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
-import * as tutil from "../traverse/util";
+import * as tutil from "./util";
 import * as util from "../util/util";
 
 
@@ -48,8 +48,8 @@ class Brace extends MNode implements Selectable {
     }
 
     public toKatex() {
-        if(this.isRight) return " \\right" + this.brace+ " ";
-        else return " \\left " + this.brace + " ";
+        if(this.isRight) return "\\right" + this.brace+ " ";
+        else return "\\left " + this.brace + " ";
     }
 
 }

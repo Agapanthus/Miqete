@@ -54,16 +54,5 @@ window.onload = ()=> {
 
   buildGUI();
 
-/*
-  WebFont.load({
-    google: {
-      families: styles.fonts
-    },
-    active: function() {
-      console.log("Loading finished!");
-      buildGUI();
-    }
-  });
-*/
 };
 

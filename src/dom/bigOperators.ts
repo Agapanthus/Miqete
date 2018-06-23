@@ -1,6 +1,6 @@
-import { opar, MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
+import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 
-import * as tutil from "../traverse/util";
+import * as tutil from "./util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
@@ -90,7 +90,7 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
         }
         
         this.e = tfcwc;     
-        console.log(this.e)
+        //console.log(this.e)
 
         this.child(0).rKatex(ec[0]);
         this.child(1).rKatex(ec[2]);
@@ -107,9 +107,9 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
     public toKatex() {
     
         return "{" + this.katexCmd
-            + "_" + this.child(0).toKatex() +  " "
-            + "^" + this.child(1).toKatex() +  " "
-            + opar(this.child(2).toKatex(), this.child(2).precendence() < this.myVirtualPrec) 
+            + "_" + this.child(0).toKatex() 
+            + "^" + this.child(1).toKatex() 
+            + tutil.opar(this.child(2).toKatex(), this.child(2).precendence() < this.myVirtualPrec) 
             + "}";
     }
 
