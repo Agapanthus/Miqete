@@ -2,7 +2,7 @@
 import {style, keyframes, types, media } from 'typestyle';
 
 
-import { Creator, MNode, SimplificationStrategy, Vector } from "../dom/mdom";
+import { Creator, MNode, Vector } from "../dom/mdom";
 import {  findCommonAncestor, mMap, findChild, mPrint } from "../dom/util";
 
 import * as util from "../util/util";

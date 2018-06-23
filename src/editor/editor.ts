@@ -1,7 +1,7 @@
 
 import * as katex from "katex";
 
-import { MNode, SimplificationStrategy, Vector } from "../dom/mdom";
+import { MNode, Vector } from "../dom/mdom";
 import { Cursor } from "./cursor"
 
 declare const ResizeObserver: any;
@@ -73,9 +73,6 @@ export class Editor {
         element.appendChild(pseudoPar);
         
         this.rebuildKatex();
-
-        //this.eval();
-
     }
 
 
@@ -87,14 +84,6 @@ export class Editor {
 
     }
 
-    private eval() {
-        this.mdom = this.mdom.strip();
-        const res = this.mdom.eval({
-            strategy: SimplificationStrategy.none,
-            prec: 32, given: []});
-
-        console.log(res);
-    }
 
     private rebuildKatex() {
         const kt = "\\displaystyle" + this.mdom.toKatex();

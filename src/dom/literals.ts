@@ -1,5 +1,5 @@
 
-import { Vector, MNode, EvalFlags, maxPrec, Creator, Selectable} from "./mdom";
+import { Vector, MNode, maxPrec, Creator, Selectable} from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as util from "../util/util";
@@ -52,8 +52,6 @@ export abstract class Literal extends MNode implements Selectable {
         return " " + this.value + " "; // TODO: How to handel something like "orf b c" (orf times b times c)? It is displayed as "or f bc"
     }
 
-
-    abstract eval(flags: EvalFlags): MNode;
 }
 
 export class Integer extends Literal {
@@ -64,9 +62,6 @@ export class Integer extends Literal {
         this.v = i;
     }
 
-    public eval(flags: EvalFlags) {
-        return new Integer(this.v);
-    }
 
     public getValue(): number {
         return this.v;

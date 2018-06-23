@@ -1,5 +1,5 @@
 
-import { MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec, Creator, Selectable } from "./mdom";
+import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 import * as tutil from "../traverse/util";
 import * as util from "../util/util";
 
@@ -52,10 +52,6 @@ class Brace extends MNode implements Selectable {
         else return " \\left " + this.brace + " ";
     }
 
-    public eval(flags: EvalFlags): MNode {
-        console.error("Semantic nonsense!");
-        return null;
-    }
 }
 
 export class Parentheses extends MNode {
@@ -134,10 +130,6 @@ export class Parentheses extends MNode {
         return "{" + this.child(0).toKatex()
             + this.child(1).toKatex()
             + this.child(2).toKatex() + "}";
-    }
-
-    public eval(flags: EvalFlags): MNode {
-        return this.child(0).eval(flags);
     }
 
 }

@@ -23,32 +23,6 @@ export interface Selectable {
 }
 
 
-export enum SimplificationStrategy {
-    // Don't do anything!
-    none,
-
-    // If possible, use commutative law to alphanumerically sort terms connected by operators of same precedence
-    sort,
-
-    // For +-*/
-    expand,
-    factor,
-
-    // Logical normal forms
-    pränex,
-    skolem,
-    positive,
-    cdnf, // canonical disjunctive
-    ccnf, // canonical conjunctive
-
-}
-
-export interface EvalFlags {
-    strategy: SimplificationStrategy, // expand, factor...
-    prec: number, // number of bits precision or -1 for precise evaluation
-    given: any[], // Given variables, e.g. "x=1/2" or "sin(x^2)=u_1" for substitution
-}
-
 // Add automatically-generated silent parentheses
 export function opar(inner: string, addPar: boolean) {
     if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
@@ -109,9 +83,7 @@ export abstract class MNode  {
 
     // Will recursively create dummys for selection and cursor
     public abstract createSelectionAreas(creator: Creator): void;
- 
-    // Returns the symbolically fully simplified eval
-    public abstract eval(flags: EvalFlags): MNode;
+
 
     // Children and Parent of this node
     private children: MNode[] = [];

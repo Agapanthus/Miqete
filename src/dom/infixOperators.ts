@@ -1,5 +1,5 @@
 
-import { opar, MNode, Vector, EvalFlags, SimplificationStrategy, Creator, Selectable } from "./mdom";
+import { opar, MNode, Vector, Creator, Selectable } from "./mdom";
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
@@ -163,29 +163,6 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
             + "}";
     }
 
-    public eval(flags: EvalFlags): MNode {
-        try {
-            const a = this.child(0).eval(flags);
-            const b = this.child(1).eval(flags);
-
-            switch(flags.strategy) {
-                case SimplificationStrategy.none:
-                    if(a instanceof l.Literal && b instanceof l.Literal) {
-                        return this.evalP(a, b, flags);
-                    }
-                break;
-                default: console.error("not impl");
-            }
-        } catch(e) {
-            console.error("Exception: " + e);
-        }
-
-        return null;
-    }
-
-    // Evaluates this term
-    protected abstract evalP(a: l.Literal, b: l.Literal, flags: EvalFlags): MNode;
-
     // Determines if the operator is associative given these nodes. Implementation has to determine the node's AlgebraicStructure!
     // For example, given a = 1 and b = 2 - 3 * 5 is (1+2) - 3*5  = 1 + (2 - 3*5) ?
     protected abstract isABAssociative(a: MNode, b: MNode): boolean;
@@ -226,11 +203,7 @@ export class Add extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
         super(a, b, "+", "+", 20);
     }
-    protected evalP(a: l.Literal, b :l.Literal, flags: EvalFlags) {
-        if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
-            return new l.Integer( a.getValue() + b.getValue() );
-        } else throw "Addition only supported for integers";
-    }
+   
     protected isABAssociative(a: MNode, b: MNode) {
         return b instanceof Add; // TODO: Not always true!
     }
@@ -239,11 +212,7 @@ export class Sub extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
         super(a, b, "-", "\u2212", 20); // http://www.mauvecloud.net/charsets/CharCodeFinder.html
     }
-    protected evalP(a: l.Literal, b :l.Literal, flags: EvalFlags) {
-        if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
-            return new l.Integer( a.getValue() - b.getValue() );
-        } else throw "Subtraction only supported for integers";
-    }
+    
     protected isABAssociative(a: MNode, b: MNode) {
         return false; // TODO: Not always true!
     }
@@ -255,11 +224,7 @@ export class Mul extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
         super(a, b, "\\cdot", "\u22c5", 30);
     }
-    protected evalP(a: l.Literal, b :l.Literal, flags: EvalFlags) {
-        if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
-            return new l.Integer( a.getValue() * b.getValue() );
-        } else throw "Multiplication only supported for integers";
-    }
+   
     protected isABAssociative(a: MNode, b: MNode) {
         return b instanceof Mul; // TODO: Not always true!
     }
@@ -272,11 +237,7 @@ export class Div extends binaryInfixOperator {
         super(a, b, "/", "/", 30);
     }
     
-    protected evalP(a: l.Literal, b :l.Literal, flags: EvalFlags) {
-        if(a instanceof l.Integer && b instanceof l.Integer && flags.prec === 32) {
-            return new l.Integer( a.getValue() / b.getValue() );
-        } else throw "Division only supported for integers";
-    }
+    
     protected isABAssociative(a: MNode, b: MNode) {
         return false; // TODO: Not always true!
     }

@@ -1,4 +1,4 @@
-import { opar, MNode, Vector, EvalFlags, SimplificationStrategy, maxPrec, Creator, Selectable } from "./mdom";
+import { opar, MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 
 import * as tutil from "../traverse/util";
 import * as l from "./literals";
@@ -113,51 +113,18 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
             + "}";
     }
 
-    public eval(flags: EvalFlags): MNode {
-        try {
-            const b = this.child(0).eval(flags);
-            const t = this.child(1).eval(flags);
-            
-            switch(flags.strategy) {
-                case SimplificationStrategy.none:
-                    if(b instanceof l.Literal && t instanceof l.Literal) {
-                        return this.evalP(b, t, this.child(2), flags);
-                    }
-                break;
-                default: console.error("not impl");
-            }
-        } catch(e) {
-            console.error("Exception: " + e);
-        }
-
-        return null;
-    }
-
-    protected abstract evalP(b: l.Literal, t :l.Literal, bod: MNode, flags: EvalFlags): MNode;
-}
+  }
 
 export class Sum extends bigPrefixOperator {
     constructor(bottom: MNode, top: MNode, body: MNode) {
         super(bottom, top, body, "\\sum", "\u2211", 21);
     }
-    protected evalP(b: l.Literal, t: l.Literal, bod: MNode, flags: EvalFlags): MNode {
-        if(b instanceof l.Integer && t instanceof l.Integer && flags.prec === 32) {
-            //return new l.Integer( b.getValue() + b.getValue() );
-            console.warn("Dummy eval!");
-            return bod.eval(flags);  // TODO: Dummy!
-        } else throw "Addition only supported for integers";
-    }
+  
 }
 
 export class Prod extends bigPrefixOperator {
     constructor(bottom: MNode, top: MNode, body: MNode) {
         super(bottom, top, body, "\\prod", "\u220f", 31);
     }
-    protected evalP(b: l.Literal, t: l.Literal, bod: MNode, flags: EvalFlags): MNode {
-        if(b instanceof l.Integer && t instanceof l.Integer && flags.prec === 32) {
-            //return new l.Integer( b.getValue() + b.getValue() );
-            console.warn("Dummy eval!");
-            return bod.eval(flags);  // TODO: Dummy!
-        } else throw "Addition only supported for integers";
-    }
+   
 }
