@@ -9,6 +9,7 @@ declare const ResizeObserver: any;
 
 import * as util from "../util/util";
 import { style } from "typestyle/lib";
+import { Layer } from "../dom/layer";
 
 
 
@@ -53,7 +54,7 @@ export class Editor {
 
     constructor(element: Element, mdom: MNode) {
       
-        this.mdom = mdom;
+        this.mdom = new Layer(mdom);
         this.katexEle = document.createElement("div");
         this.katexEle.className = css.noSelect;
 

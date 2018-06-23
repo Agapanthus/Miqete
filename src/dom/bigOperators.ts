@@ -3,7 +3,7 @@ import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 import * as tutil from "./util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
-
+import { Layer } from "./layer";
 
 abstract class bigPrefixOperator extends MNode implements Selectable {
     public e: Element
@@ -24,8 +24,8 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
     constructor(bottom: MNode, top: MNode, body: MNode, katexCmd: string, htmlSym: string, precedence: number) {
         super();
 
-        this.setChild(bottom, 0);
-        this.setChild(top, 1);
+        this.setChild(new Layer(bottom), 0);
+        this.setChild(new Layer(top), 1);
         this.setChild(body, 2);
         
         this.myVirtualPrec = precedence;
@@ -35,12 +35,8 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
 
     public createSelectionAreas(c: Creator): void {
         this.s = c.add(this.pos, this.size);
-        c.push(true);
         this.child(0).createSelectionAreas(c);
-        c.pop();
-        c.push(true);
         this.child(1).createSelectionAreas(c);
-        c.pop();
         this.child(2).createSelectionAreas(c);
     }
 

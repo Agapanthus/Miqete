@@ -11,6 +11,7 @@ import { assoRotateLeft, binaryInfixOperator, assoRotateRight } from '../dom/inf
 import * as pa from "../dom/parentheses";
 import * as io from "../dom/infixOperators";
 import * as bo from "../dom/bigOperators";
+import { Layer } from "../dom/Layer";
 import * as li from "../dom/input";
 import * as tutil from "../dom/util";
 
@@ -34,6 +35,7 @@ export namespace css {
         marginLeft: "-1px"
     });
 
+    
     export const dummyNode = style({
         color: "rgba(0,0,0,0)",
 
@@ -43,7 +45,7 @@ export namespace css {
         "-ms-user-select": "auto",
         "-webkit-user-select": "auto",
         overflow: "hidden",
-       // background:  "rgba(100,100,255,0.2)", // Use this for debugging
+        //background:  "rgba(100,100,255,0.2)", // Use this for debugging
 
         position: "absolute",
         cursor: "text",
@@ -61,13 +63,18 @@ export namespace css {
             },
             "&.selected": {
                 background: "rgba(255,180,100,0.3)",
-
+            },
+            "&.selected[filler], &[filler]": {
+                background: "transparent"
+                //background: "rgba(100,100,255,0.05)", // Use this for debugging
             },
             "&:focus": {
                 outline: "none"
             }
         }
     });
+
+
 
     
   
@@ -90,6 +97,8 @@ class Creator_impl extends Creator {
 
     private stack: Creator_level[];
     private ele: Element;
+
+    private fillers: Array<{ e: HTMLElement, pos: Vector, stackheight: number, height: number }>;
     
     private onInput: (e: KeyboardEvent) => void;
     private onClick: (e: MouseEvent) => void;
@@ -101,23 +110,28 @@ class Creator_impl extends Creator {
         this.start(null, null, null);
     }
 
-    private insertElement(pos: Vector): HTMLElement {
+    private insertElement(pos: Vector, notSelectable?: boolean): HTMLElement {
         const me = document.createElement("div");
         
         me.className = css.dummyNode;
-
-        me.innerText = "."; // TODO: Make the glyph fill exactly the whole area!
-
+        
         me.style.left = pos.x + "px";
         me.style.top = pos.y + "px";
-
-        me.tabIndex = 0;
 
         me.setAttribute("layer", ""+ this.stack[this.stack.length - 1].layerIndex);
 
         me.onclick = this.onClick;
+
+        // Accept input
+        me.tabIndex = 0;
         me.onkeydown = this.onInput;
-    
+
+
+        if(!notSelectable) {
+            me.innerText = "."; // TODO: Make the glyph fill exactly the whole area!
+        } else {
+            me.setAttribute("filler","");
+        }    
 
         this.ele.appendChild(me);
 
@@ -125,8 +139,6 @@ class Creator_impl extends Creator {
     }
 
     private scaleElement(me: HTMLElement, size: Vector): void {
-        
-
         me.style.width = size.x + "px";
         me.style.height = size.y + "px";
         
@@ -134,8 +146,28 @@ class Creator_impl extends Creator {
         me.style.fontSize = size.y + "px";
     }
 
+    private setFillers(right: number) {
+        // Set fillers
+        for(let i=0; i<this.fillers.length; i++) {
+            const f = this.fillers[i];
+            if(f.stackheight > this.stack.length) {
+                let width = right - f.pos.x;
+                if(width < 0 || right < 0) {
+                    width = 0;
+                }
+                this.scaleElement(f.e, new Vector(width, f.height))
+            }
+        }
+        this.fillers = util.filter(this.fillers, e   => e.stackheight <=   this.stack.length);
+    }
+
     // size might be null if you don't want to insert a new element but only scale the previous one
     public add(pos: Vector, size: Vector): HTMLElement {
+        if(this.stack.length <= 0) {
+            console.error("nothing pushed");
+            return;
+        }
+
         const last = this.stack[this.stack.length - 1];
 
         let end;
@@ -150,13 +182,29 @@ class Creator_impl extends Creator {
             end = (last.bottomright.x + pos.x) / 2;
             this.scaleElement(last.lastEle, new Vector(end - last.lastPos.x, last.bottomright.y - last.lastPos.y) );
         }
+
+
+        this.setFillers(end);
         
-        // Insert next element
-        if(size) {        
-            last.lastPos = new Vector(end, pos.y);
-            last.lastEle = this.insertElement(last.lastPos);
-            last.bottomright = new Vector(pos.x + size.x, pos.y + size.y);
-            return last.lastEle;
+        if(size) {     
+            if(size.x < 0) {
+                // Insert filler element
+                const lastPos = new Vector(end, pos.y);
+                const thatEle = this.insertElement(lastPos, true);
+                this.fillers.push({
+                    e: thatEle,
+                    pos: lastPos,
+                    stackheight: this.stack.length,
+                    height: last.bottomright.y - last.lastPos.y
+                });
+                return thatEle;            
+            } else {
+                // Insert next element
+                last.lastPos = new Vector(end, pos.y);
+                last.lastEle = this.insertElement(last.lastPos);
+                last.bottomright = new Vector(pos.x + size.x, pos.y + size.y);
+                return last.lastEle;
+            }
         }
 
         return null;
@@ -174,20 +222,21 @@ class Creator_impl extends Creator {
         this.layerIndex++;
     }
 
-    public pop(): void {
+    public pop(): HTMLElement {
         const last = this.stack[this.stack.length - 1];
         
-        // TODO: fill is ignored.
-        /*
+        
         if(last.fill) {
-            const plast = this.stack[this.stack.length - 2];
-            if(plast.bottomright.x < last.bottomright.x) console.error("Must be not less!");
-            this.add(new Vector(plast.bottomright.x, last.lastPos.y), null);
-        } else*/ {            
+            // Create a filler-element
+            const filler = this.add(new Vector(last.bottomright.x, last.lastPos.y), new Vector(-1,-1));
+            this.stack.pop();
+            return filler;
+        } else {            
+            // Simply finish the element
             this.add(new Vector(last.bottomright.x, last.lastPos.y), null);
+            this.stack.pop();
+            return null;
         }
-
-        this.stack.pop();
 
     }
 
@@ -196,22 +245,27 @@ class Creator_impl extends Creator {
         this.onInput = onInput;
         this.onClick = onClick;
         this.stack = [];
+        this.fillers = [];
         this.layerIndex = 0;
         this.ele = ele;
         if(this.ele)
             while (this.ele.firstChild) this.ele.removeChild(this.ele.firstChild);
-
-        this.push(false);
     }
 
     // Complete dummy, empty stack
     public finish() {
-        this.pop();
         if(this.stack.length !== 0) {
             console.error("Invalid Creator-usage!");
             console.log(this);
         }
+
+        this.setFillers(-1);
+        if(this.fillers.length !== 0) {
+            console.error("Invalid Creator-usage!");
+            console.log(this);
+        }
     }
+
 }
 
 
@@ -361,8 +415,7 @@ export class Cursor {
         return head;
     };
         
-
-   
+  
 
     private select(e: MNode) {
         
@@ -425,8 +478,8 @@ export class Cursor {
             const i = tutil.getVisualIndex(c, this.dummyEle);
            
             const nc = tutil.getNextInSameLayer(i, this.mdom, this.dummyEle);
-            if(nc === c) {
-                console.warn("TODO: Go to the end");
+            if(nc === c && (nc.constructor as any).name !== "Layer") { // For unknwon reasons "instanceof" doesn't work here
+                console.error("This is not a valid layer!");
             } else c = nc;
             
         }
@@ -614,12 +667,18 @@ export class Cursor {
 
                 }
             break;
-            case "Home":
-                console.warn("TODO: Pos1")
-            break;
-            case "End":
-                console.warn("TODO: End")
-            break;
+            case "Home": {
+                const nc = tutil.getByVisualIndex(0, this.mdom, this.dummyEle);
+                if(nc) {
+                    this.setCursor(nc);
+                } else console.error("not found");
+            } break;
+            case "End": {
+                const nc = tutil.getByVisualIndex(this.dummyEle.children.length - 1, this.mdom, this.dummyEle);
+                if(nc) {
+                    this.setCursor(nc);
+                } else console.error("not found");
+            } break;
             
             case "Enter":
                 console.warn("TODO: Enter")

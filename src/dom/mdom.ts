@@ -51,8 +51,8 @@ export abstract class Creator {
     // but also a has been padded to the same length as 1+2)
     abstract push(fill: boolean): void;
 
-    // One level higher
-    abstract pop(): void;
+    // One level higher - returns, if fill was true, the placeholder element
+    abstract pop(): HTMLElement;
 }
 
 

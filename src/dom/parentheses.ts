@@ -55,9 +55,7 @@ class Brace extends MNode implements Selectable {
 }
 
 export class Parentheses extends MNode {
-    private e: Element
-    public s: HTMLElement
-
+    
     public precendence(): number {
         return maxPrec;
     }
@@ -111,8 +109,6 @@ export class Parentheses extends MNode {
         if(!ec[2].className || !util.hasElement("mclose", ec[2].className.split(" "))  ) {
             console.error("Expected mclose but found " + ec[2].className);
         }  
-
-        this.e = e;     
         
         this.child(0).rKatex(ec[0]);
         this.child(1).rKatex(ec[1]);
