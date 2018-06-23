@@ -67,3 +67,17 @@ export class Integer extends Literal {
         return this.v;
     } 
 }
+
+export class Symbol extends Literal {
+    private v: string;
+
+    constructor(i: string) {
+        super(i);
+        this.v = i;
+    }
+
+
+    public getValue(): string {
+        return this.v;
+    } 
+}

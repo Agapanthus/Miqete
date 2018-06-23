@@ -5,6 +5,30 @@ import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 
 
+const infixOperators = {
+    "+": {
+        html: "+", 
+        prec: 20,
+        assoc: ["+"] // TODO: -? It is quite often associative with +. So we might want to be it here too. But need to take care of the negation...
+    },
+    "-" : {
+        html: "\u2212",  // http://www.mauvecloud.net/charsets/CharCodeFinder.html
+        prec: 20,
+        assoc: []
+    },
+    "\\cdot": {
+        html: "\u22c5", 
+        prec: 30,
+        assoc: ["\\cdot"]
+    },
+    /*"/": {
+        html: "/", 
+        prec: 30,
+        assoc: ["\\cdot", "/"]
+    }*/
+
+}
+
 // If b is associative, left rotation doesn't change semantics. Don't forget to link c to b's parent!
 export function assoRotateLeft(b: binaryInfixOperator, dontcheck?: boolean): binaryInfixOperator {
     if(!dontcheck) {
@@ -53,13 +77,8 @@ export function assoRotateRight(a: binaryInfixOperator, dontcheck?: boolean): bi
     return b;
 }
 
-
-export abstract class binaryInfixOperator extends MNode implements Selectable {
-    public e: Element
-    public s: HTMLElement
-    public size: Vector
-    public pos: Vector
-    
+export class binaryInfixOperator extends MNode {
+       
     private prec: number;
     public precendence(): number {
         return this.prec;
@@ -67,21 +86,29 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
 
     private katexCmd;
     private htmlSym;
+    private mySymbol : {
+        html: string,
+        prec: number,
+        assoc: string[]
+    };
 
-    constructor(a: MNode, b: MNode, katexCmd: string, htmlSym: string, precedence: number) {
+    constructor(a: MNode, b: MNode, katexCmd: string) {
         super();
 
         this.setChild(a, 0);
         this.setChild(b, 1);
+        this.setChild(new l.Symbol(katexCmd), 2);
 
-        this.prec = precedence;
+        this.mySymbol = infixOperators[katexCmd];
+        if(!this.mySymbol) console.error("Unknown symbol " + katexCmd);
+        this.prec = this.mySymbol.prec;
         this.katexCmd = katexCmd;
-        this.htmlSym = htmlSym;
+        this.htmlSym = this.mySymbol.html;
     }
     
     public createSelectionAreas(c: Creator): void {
         this.child(0).createSelectionAreas(c);
-        this.s = c.add(this.pos, this.size);
+        this.child(2).createSelectionAreas(c);
         this.child(1).createSelectionAreas(c);
     }
 
@@ -121,9 +148,7 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
                 console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[2]));
             }
             
-            this.e = ec[2];     
-            console.log(this.e)
-
+            this.child(2).rKatex(ec[2]);
             this.child(0).rKatex(ec[0]);
             this.child(1).rKatex(ec[4]);
 
@@ -132,17 +157,15 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
                 console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[1]));
             }
             
-            this.e = ec[1];     
-            console.log(this.e)
-
+            this.child(2).rKatex(ec[1]);
             this.child(0).rKatex(ec[0]);
             this.child(1).rKatex(ec[2]);
         }
     }
     
     public sync(br: Vector) { 
-        tutil.measure(this.e, br, this);
         this.child(0).sync(br);
+        this.child(2).sync(br);
         this.child(1).sync(br);
     }
 
@@ -158,18 +181,30 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
     public toKatex() {    
         return "{"
             + opar(this.child(0).toKatex(), this.aNeedsParens()) 
-            + " " + this.katexCmd + " " 
+            + " " + this.child(2).toKatex() + " "
             + opar(this.child(1).toKatex(), this.bNeedsParens()) 
             + "}";
     }
 
-    // Determines if the operator is associative given these nodes. Implementation has to determine the node's AlgebraicStructure!
+    public getCmd() {
+        return this.katexCmd;
+    }
+
+    // Determines if the operator is associative given these nodes.
     // For example, given a = 1 and b = 2 - 3 * 5 is (1+2) - 3*5  = 1 + (2 - 3*5) ?
-    protected abstract isABAssociative(a: MNode, b: MNode): boolean;
+    protected isRightAssociative(r: MNode): boolean {
+        if(r instanceof binaryInfixOperator) {
+            if(0 <= this.mySymbol.assoc.indexOf(r.getCmd())) {
+                return true;
+            }
+            return false;
+        } 
+        return false;
+    }
 
     public isAssociative(): boolean {
         if(this.child(1) instanceof binaryInfixOperator) {
-            return this.isABAssociative(this.child(0), this.child(1));
+            return this.isRightAssociative(this.child(1));
         } 
         return false;
     }
@@ -199,47 +234,21 @@ export abstract class binaryInfixOperator extends MNode implements Selectable {
 }
 
 
+
 export class Add extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
-        super(a, b, "+", "+", 20);
-    }
-   
-    protected isABAssociative(a: MNode, b: MNode) {
-        return b instanceof Add; // TODO: Not always true!
+        super(a,b,"+");
     }
 }
+
 export class Sub extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
-        super(a, b, "-", "\u2212", 20); // http://www.mauvecloud.net/charsets/CharCodeFinder.html
-    }
-    
-    protected isABAssociative(a: MNode, b: MNode) {
-        return false; // TODO: Not always true!
+        super(a,b,"-");
     }
 }
 
-
-// TODO: not that easy! What's about multiplying without "*" ?
 export class Mul extends binaryInfixOperator {
     constructor(a: MNode, b: MNode) {
-        super(a, b, "\\cdot", "\u22c5", 30);
-    }
-   
-    protected isABAssociative(a: MNode, b: MNode) {
-        return b instanceof Mul; // TODO: Not always true!
+        super(a,b,"\\cdot");
     }
 }
-
-
-// TODO: not that easy! What's about ÷,/ and frac?
-export class Div extends binaryInfixOperator {
-    constructor(a: MNode, b: MNode) {
-        super(a, b, "/", "/", 30);
-    }
-    
-    
-    protected isABAssociative(a: MNode, b: MNode) {
-        return false; // TODO: Not always true!
-    }
-}
-
