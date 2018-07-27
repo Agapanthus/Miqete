@@ -58,6 +58,9 @@ export abstract class Creator {
 
 export abstract class MNode  {
 
+    // Something has been typed here 
+    public abstract input(e: string, child: MNode, operate: boolean): void;
+
     // Returns the katex-string of this element and all its children
     public abstract toKatex(): string;
 
@@ -98,6 +101,12 @@ export abstract class MNode  {
             this.children[index] = child;
         }
         child.setParent__INTERNAL(this);
+    }
+    public clearChildren() {
+        for(let c of this.children) {
+            c.setParent__INTERNAL(null);
+        }
+        this.children = [];
     }
     /*public replace(by: MNode) {
         if(!this.parent) throw "Parent does not exist!";

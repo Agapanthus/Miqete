@@ -3,18 +3,24 @@ import { MNode, Vector, Creator, Selectable, maxPrec } from "./mdom";
 import * as tutil from "./util";
 import * as l from "./literals";
 import * as util from "../util/util";
+import { Config } from "../util/config";
 
+/*
 export class LeftInput extends MNode {
        
     public precendence(): number {
         return maxPrec;
     }
 
+    private config: Config;
 
-    constructor(a: MNode, content: string) {
+
+    constructor(a: MNode, content: string, config: Config) {
         super();
 
-        this.setChild(new l.Symbol(content), 0);
+        this.config = config;
+
+        this.setChild(new l.Symbol(content, this.config), 0);
         this.setChild(a, 1);
 
     }
@@ -62,14 +68,14 @@ export class LeftInput extends MNode {
             + "}";
     }
 
-}
+}*/
 
+/*
 
-
-export class Placeholder extends l.Literal {
+export class Placeholder extends l.Glyph {
     
     constructor() {
-        super("?");
+        super("\\color{lightgrey}\\blacklozenge\\color{black}");
     }
 
-}
+}*/

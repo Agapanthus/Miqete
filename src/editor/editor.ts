@@ -10,7 +10,7 @@ declare const ResizeObserver: any;
 import * as util from "../util/util";
 import { style } from "typestyle/lib";
 import { Layer } from "../dom/layer";
-
+import { Config } from "../util/config";
 
 
 export namespace css {
@@ -52,8 +52,12 @@ export class Editor {
 
     private c: Cursor;
 
-    constructor(element: Element, mdom: MNode) {
+    private config: Config;
+
+    constructor(element: Element, mdom: MNode, config) {
       
+        this.config = config;
+        
         this.mdom = new Layer(mdom);
         this.katexEle = document.createElement("div");
         this.katexEle.className = css.noSelect;
@@ -63,7 +67,7 @@ export class Editor {
         this.dummyEle.style.lineHeight = "100%";
 
         const me = this;
-        this.c = new Cursor(this.dummyEle, (mdom: MNode) => (me.mdom=mdom, me.rebuildKatex()) );
+        this.c = new Cursor(this.dummyEle, (mdom: MNode) => (me.mdom=mdom, me.rebuildKatex()), this.config );
 
         const pseudoPar = document.createElement("div");
         pseudoPar.style.position = "relative";
@@ -96,6 +100,7 @@ export class Editor {
         
         const me = this;
 
+
         // Currently only supported in chrome
         if(util.defined(window["ResizeObserver"])) { 
             if(!this.oberserving) {
@@ -104,8 +109,8 @@ export class Editor {
                 const observer = new ResizeObserver( function(mutations) {
                    // console.log("resize");
                     
-                    const khtml = $(".katex-html .base", me.katexEle)[0];
-                    me.mdom.rKatex(khtml);     
+                   /* const khtml = $(".katex-html .base", me.katexEle)[0];
+                    me.mdom.rKatex(khtml);  */   
                     
                     me.rebuildDummy()
                 
@@ -117,6 +122,12 @@ export class Editor {
 
         katex.render(kt, this.katexEle); 
 
+        // TODO: You can have changes which don't result in size changes! (replace 3 with 4 etc...)
+        if(this.oberserving) { 
+            const khtml = $(".katex-html .base", me.katexEle)[0];
+            me.mdom.rKatex(khtml);   
+            me.rebuildDummy()  
+        }
 
 
         if(!util.defined(window["ResizeObserver"])) { 

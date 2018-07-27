@@ -4,8 +4,26 @@ import * as tutil from "./util";
 import * as l from "./literals";
 import { Parentheses } from "./parentheses";
 import { Layer } from "./layer";
+import { Config } from "../util/config";
 
-abstract class bigPrefixOperator extends MNode implements Selectable {
+
+
+
+const bigOperators = {
+    "\\sum": {
+        html: "\u2211", 
+        prec: 21,
+        assoc: ["+"] // TODO: Implement this. Also, associative with infixOperators!
+    },
+    "\\prod" : {
+        html: "\u220f", 
+        prec: 31,
+        assoc: []
+    }
+
+}
+
+export class bigPrefixOperator extends MNode implements Selectable {
     public e: Element
     public s: HTMLElement
     public size: Vector
@@ -20,17 +38,20 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
 
     // "precedence" is the value visible to the parent. "myVirtualPrec" is the value used to compare with the body-child
     private myVirtualPrec: number; 
+    private config: Config;
 
-    constructor(bottom: MNode, top: MNode, body: MNode, katexCmd: string, htmlSym: string, precedence: number) {
+    constructor(bottom: MNode, top: MNode, body: MNode, katexCmd: string, config: Config) {
         super();
+
+        this.config = config;
 
         this.setChild(new Layer(bottom), 0);
         this.setChild(new Layer(top), 1);
         this.setChild(body, 2);
         
-        this.myVirtualPrec = precedence;
+        this.myVirtualPrec = bigOperators[katexCmd].prec;
         this.katexCmd = katexCmd;
-        this.htmlSym = htmlSym;
+        this.htmlSym = bigOperators[katexCmd].html;
     }
 
     public createSelectionAreas(c: Creator): void {
@@ -52,7 +73,7 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
         this.setChild(this.child(1).bake(), 1);
         this.setChild(this.child(2).bake(), 2);
 
-        if(this.child(2).precendence() < this.myVirtualPrec) {
+        if(this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) {
             this.setChild(new Parentheses(this.child(2), "(", ")"), 2);
         }
         return this;
@@ -105,22 +126,13 @@ abstract class bigPrefixOperator extends MNode implements Selectable {
         return "{" + this.katexCmd
             + "_" + this.child(0).toKatex() 
             + "^" + this.child(1).toKatex() 
-            + tutil.opar(this.child(2).toKatex(), this.child(2).precendence() < this.myVirtualPrec) 
+            + tutil.opar(this.child(2).toKatex(), this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) 
             + "}";
     }
 
-  }
+    public input(e: string, child: MNode, operate: boolean) {
 
-export class Sum extends bigPrefixOperator {
-    constructor(bottom: MNode, top: MNode, body: MNode) {
-        super(bottom, top, body, "\\sum", "\u2211", 21);
+        // TODO
     }
-  
-}
 
-export class Prod extends bigPrefixOperator {
-    constructor(bottom: MNode, top: MNode, body: MNode) {
-        super(bottom, top, body, "\\prod", "\u220f", 31);
-    }
-   
 }

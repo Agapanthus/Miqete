@@ -3,7 +3,7 @@ import { loader } from "../GUI/loader";
 import * as styles from "../util/styles";
 import { body } from "../GUI/body";
 import * as Modernizr from 'modernizr';
-import * as WebFont from "webfontloader";
+//import * as WebFont from "webfontloader";
 
 import { Editor } from "../editor/editor";
 
@@ -15,6 +15,7 @@ import * as l from "../dom/literals";
 
 import * as $ from "jquery";
 import { mPrint } from "../dom/util";
+import { Config, ObjectCreator, verifyConfig } from "../util/config";
 
 
 const _body: (a: string) => string = (a) => `<div class='${body.body}'>${a}</div>`;
@@ -30,13 +31,127 @@ const buildGUI: () => void = () => {
 
   const element = document.getElementById("testeri");
 
-  const sum = new l.Integer(2); // new bo.Sum( new l.Integer(6), new io.Add(new l.Integer(6), new l.Integer(6)), new l.Integer(2));
+  const config: Config = {
+    semantics: true,
+    restrictMismatchedBrackets: false,
+    breakOutSupSub: ["+", "-", "=", "<", ">", "\\frac"],
+    multiCharacterVariables: false,
 
-  const mdom = (new bo.Sum( new l.Integer(2), new l.Integer(3), 
-        new io.Mul( new io.Add(new io.Add( new io.Add(new io.Add(new l.Integer(1), sum ), new io.Mul(new l.Integer(3), new l.Integer(3))), new l.Integer(4)), new l.Integer(5)), new l.Integer(2))
-      )).bake();
+    symbols: "\\\"/!§$%&/()[]{}=,.-;:_+*#'^°<>|", // TODO: direct unicode inputs (Ctrl+v)
+    commandsIO: {
 
-  new Editor(element, mdom);
+      // Symbol Infix stuff, TODO: http://asciimath.org/
+      "+": "+",
+      "*": "*",
+      "-": "-",
+      "/": "\\frac",
+      "+-":"\\pm",
+      "-+": "\\mp",
+      "=>": "\\geq", 
+      "==>": "\\implies",
+      "<=>": "\\iff",
+      "<=": "\\leq", 
+      "<==": "\\impliedby",
+      // "<-" is used as in 4 < -x
+      "<--": "\\leftarrow",
+      "-->": "\\rightarrow",
+      "<---": "\\longleftarrow",
+      "--->": "\\longrightarrow",
+      // TODO: uparrow, downarrow?
+      ":=": "\\coloneqq",
+      "|=": "\\models",
+      "==": "\\equiv",
+      "/=": "\\ne",
+      "!=": "\\ne",
+      "\\": "\\backslash",
+      //"|": "\\vert",
+
+      // TODO: direct inputs
+
+    },
+    commandsBO: {
+
+      // big Ops
+      "sum": "\\sum",
+      "prod": "\\prod",
+
+      
+    },
+    commandsSym: {
+      "...": "\\dots",
+
+      // TODO: greek
+      "alpha": "\\alpha",
+      "beta": "\\beta", 
+
+      // TODO: other letters
+
+      "infty": "\\infty",
+      "oo": "\\infty",
+      "infinity": "\\infinity",
+
+      // TODO: Combined
+      "|N": "\\mathbb{N}",
+      "|R": "\\mathbb{R}",
+    
+    },
+    commandsPar: {
+      "|_": ["\\lfloor", "\\rfloor"],
+      "_|": ["\\rfloor"],
+
+      "(":  ["(", ")"],
+      ")":  [")"],
+      "[":  ["[", "]"],
+      "]":  ["]"],
+      "{":  ["{", "}"],
+      "}":  ["}"],
+      "|":  ["|", "|"],
+      
+      // TODO: { : } and { | } ????
+      // TODO: langle, rangle
+      // TODO: Generic! uparrow-pair etc...
+    },
+    commandsFon: { // TODO: text... can be stacked, but math... can't!
+     
+      "mathsf": "\\mathsf", // sans serif      
+      "mathrm": "\\mathrm", // Roman
+      "mathbf": "\\mathbf", // Roman bold
+      "mathit": "\\mathit", // Roman italic
+      "boldsymbol": "\\bm", // Roman bold italic
+
+      "mathtt": "\\mathtt", // Monospace
+      
+      "mathbb": "\\mathbb", // double-struck
+      "mathfrak": "\\mathit", // fracture
+      "mathscr": "\\mathscr", // script
+      "mathcal": "\\mathcal", // Caligraphy
+
+      "frak": "\\mathfrak",
+      "bold": "\\mathbf",
+      "bb": "\\mathbb",
+      "doublestruck": "\\mathbb",
+      "sansserif": "\\mathsf",
+      "code": "\\mathtt",
+      "tt": "\\mathtt",
+      "cali": "\\mathcal",
+      "script": "\\mathscr",
+      "bm": "\\bm",
+     
+      
+    }
+  
+  };
+  
+  verifyConfig(config);
+  const c = new ObjectCreator(config);
+  
+  const sum = c.Mul(c.Int(3), c.Prod( c.Int(6), c.Add(c.Int(6), c.Int(6)), c.Int(2)));
+
+  const mdom = (c.Sum( c.Int(112), c.Int(19), 
+        c.Mul( c.Add( c.Add( c.Add(c.Add(c.Int(1941), sum ), c.Mul(c.Int(3), c.Int(3))), c.Int(4)), c.Int(5)), c.Int(2))
+      )).bake() //.strip();
+
+  new Editor(element, mdom, config);
 
 };
 

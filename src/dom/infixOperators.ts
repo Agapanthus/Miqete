@@ -2,6 +2,7 @@
 import { MNode, Vector, Creator, Selectable } from "./mdom";
 import * as tutil from "./util";
 import * as l from "./literals";
+import { Config } from "../util/config";
 import { Parentheses } from "./parentheses";
 
 
@@ -86,18 +87,21 @@ export class binaryInfixOperator extends MNode {
 
     private katexCmd;
     private htmlSym;
+    private config: Config;
+
     private mySymbol : {
         html: string,
         prec: number,
         assoc: string[]
     };
 
-    constructor(a: MNode, b: MNode, katexCmd: string) {
+    constructor(a: MNode, b: MNode, katexCmd: string, config: Config) {
         super();
+        this.config = config;
 
         this.setChild(a, 0);
         this.setChild(b, 1);
-        this.setChild(new l.Symbol(katexCmd), 2);
+        this.setChild(new l.Symbol(katexCmd, this.config), 2);
 
         this.mySymbol = infixOperators[katexCmd];
         if(!this.mySymbol) console.error("Unknown symbol " + katexCmd);
@@ -170,11 +174,13 @@ export class binaryInfixOperator extends MNode {
     }
 
     private bNeedsParens() {
+        if(!this.config.semantics) return false;
         return (this.child(1).precendence() < this.precendence()) 
                     // Beware: when the operator is not associative, you  
                     || ((this.child(1).precendence() === this.precendence()) && !this.isAssociative())
     }
     private aNeedsParens() {
+        if(!this.config.semantics) return false;
         return this.child(0).precendence() < this.precendence();
     }
 
@@ -193,6 +199,8 @@ export class binaryInfixOperator extends MNode {
     // Determines if the operator is associative given these nodes.
     // For example, given a = 1 and b = 2 - 3 * 5 is (1+2) - 3*5  = 1 + (2 - 3*5) ?
     protected isRightAssociative(r: MNode): boolean {
+        if(!this.config.semantics) return true;
+
         if(r instanceof binaryInfixOperator) {
             if(0 <= this.mySymbol.assoc.indexOf(r.getCmd())) {
                 return true;
@@ -203,6 +211,8 @@ export class binaryInfixOperator extends MNode {
     }
 
     public isAssociative(): boolean {
+        if(!this.config.semantics) return true;
+
         if(this.child(1) instanceof binaryInfixOperator) {
             return this.isRightAssociative(this.child(1));
         } 
@@ -231,24 +241,10 @@ export class binaryInfixOperator extends MNode {
             return c.isRightmostChild(a);
         } else return false;
     }
-}
 
+    public input(e: string, child: MNode, operate: boolean) {
 
-
-export class Add extends binaryInfixOperator {
-    constructor(a: MNode, b: MNode) {
-        super(a,b,"+");
+        // TODO
     }
 }
 
-export class Sub extends binaryInfixOperator {
-    constructor(a: MNode, b: MNode) {
-        super(a,b,"-");
-    }
-}
-
-export class Mul extends binaryInfixOperator {
-    constructor(a: MNode, b: MNode) {
-        super(a,b,"\\cdot");
-    }
-}

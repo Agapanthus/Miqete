@@ -2,6 +2,7 @@
 import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 import * as tutil from "./util";
 import * as util from "../util/util";
+import { Config } from "../util/config";
 
 
 class Brace extends MNode implements Selectable {
@@ -52,6 +53,10 @@ class Brace extends MNode implements Selectable {
         else return "\\left " + this.brace + " ";
     }
 
+    public input(e: string, child: MNode, operate: boolean) {
+
+        // TODO
+    }
 }
 
 export class Parentheses extends MNode {
@@ -126,6 +131,11 @@ export class Parentheses extends MNode {
         return "{" + this.child(0).toKatex()
             + this.child(1).toKatex()
             + this.child(2).toKatex() + "}";
+    }
+
+    public input(e: string, child: MNode, operate: boolean) {
+
+        // TODO
     }
 
 }

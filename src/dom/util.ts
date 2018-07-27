@@ -1,6 +1,6 @@
 
 import { MNode } from "./mdom";
-import { Literal } from "./literals";
+import { Glyph } from "./literals";
 import * as util from "../util/util";
 import { Selectable, Vector } from "../dom/mdom";
 
@@ -53,7 +53,7 @@ export function mPrint(a: MNode, indent?: number): void {
     if(!indent) indent = 0;
     for(let i=0; i<indent; i++) indenta += "  ";
     let info = "  ";
-    if(a instanceof Literal) {
+    if(a instanceof Glyph) {
         info += a.getSValue();
     }
 

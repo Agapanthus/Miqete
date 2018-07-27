@@ -52,4 +52,9 @@ export class Layer extends MNode  {
         return this.child(0).toKatex();
     }
 
+    public input(e: string, child: MNode, operate: boolean) {
+
+        // TODO
+    }
+
 }

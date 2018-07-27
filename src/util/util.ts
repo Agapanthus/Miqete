@@ -26,6 +26,27 @@ export function updateState<T>(state: T, changes: Object) {
 }
 
 
+export function isNumeric(num: string){
+    if(!num || num.length <= 0) return false;
+    return !isNaN(num as any)
+}
+
+
+
+// https://stackoverflow.com/a/25352300/6144727
+function isAlphaNumeric(str) {
+    var code, i, len;
+  
+    for (i = 0, len = str.length; i < len; i++) {
+      code = str.charCodeAt(i);
+      if (!(code > 47 && code < 58) && // numeric (0-9)
+          !(code > 64 && code < 91) && // upper alpha (A-Z)
+          !(code > 96 && code < 123)) { // lower alpha (a-z)
+        return false;
+      }
+    }
+    return true;
+};
 
 // https://stackoverflow.com/a/8630641/6144727
 export function createCSSSelector(selector: string, style: string) {
@@ -158,6 +179,20 @@ export function testIntersect<T>(a: Array<T>, b: Array<T>) {
         if(b.indexOf(c) >= 0) return true;
     }
     return false;
+}
+
+
+// Returns true iff the arrays intersect
+export function intersect<T>(a: Array<T>, b: Array<T>) {
+    let intersection = [];
+    for(let c of a) {
+        if(b.indexOf(c) >= 0) {
+            if(intersection.indexOf(c) < 0) {
+                intersection.push(c);
+            }
+        }
+    }
+    return intersection;
 }
 
 // http://blog.stevenlevithan.com/archives/javascript-roman-numeral-converter

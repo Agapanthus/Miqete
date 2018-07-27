@@ -14,7 +14,10 @@ import * as bo from "../dom/bigOperators";
 import { Layer } from "../dom/Layer";
 import * as li from "../dom/input";
 import * as tutil from "../dom/util";
+import { Config } from "../util/config";
 
+
+// TODO: It might happen that you try to select something before rebuildDummy / rekatex has been called. At this point, this would be fatal. fix it!
 
 export namespace css {
   
@@ -45,7 +48,7 @@ export namespace css {
         "-ms-user-select": "auto",
         "-webkit-user-select": "auto",
         overflow: "hidden",
-        //background:  "rgba(100,100,255,0.2)", // Use this for debugging
+       // background:  "rgba(100,100,255,0.2)", // Use this for debugging
 
         position: "absolute",
         cursor: "text",
@@ -65,8 +68,8 @@ export namespace css {
                 background: "rgba(255,180,100,0.3)",
             },
             "&.selected[filler], &[filler]": {
-                background: "transparent"
-                //background: "rgba(100,100,255,0.05)", // Use this for debugging
+                //background: "transparent"
+             //   background: "rgba(100,100,255,0.05)", // Use this for debugging
             },
             "&:focus": {
                 outline: "none"
@@ -272,6 +275,8 @@ class Creator_impl extends Creator {
 export class Cursor {
 
     private crea: Creator_impl;
+
+    private config: Config;
     
     private hasSelectionChange: boolean;
     private mouseDown: boolean;
@@ -286,9 +291,10 @@ export class Cursor {
     private cursor: MNode;
 
 
-    constructor(dummyEle: HTMLElement, onRefresh: (mdom: MNode)=>void ) {
+    constructor(dummyEle: HTMLElement, onRefresh: (mdom: MNode)=>void, config: Config) {
         this.crea = new Creator_impl();
 
+        this.config = config;
         this.onRefresh = onRefresh;
 
         this.dummyEle = dummyEle;
@@ -579,51 +585,73 @@ export class Cursor {
 
     }
 
+    private moveCursorRight(start: MNode) {
+        const i = tutil.getVisualIndex(start, this.dummyEle);
+        if(i >= this.dummyEle.children.length - 1) {
+            // TODO: Callback: Exit to the right
+        } else if(i >= 0) {
+            const nc = tutil.getByVisualIndex(i + 1, this.mdom, this.dummyEle);
+            if(nc) {
+                this.setCursor(nc);
+            }
+        }
+    }
     
     private onInput = (e: KeyboardEvent): any => {
         console.log(e.key);
         
-        const c = findChild(this.mdom, a => ( (a as any).s === e.currentTarget) );
-        if(!c) {
-            console.warn("child not found!");
-            return;
+        let c;
+        if(this.selection) { // If the selection 
+            c = this.selection;
+        } else { // Get the cursor-node
+            c = findChild(this.mdom, a => ( (a as any).s === e.currentTarget) );
+            if(!c) {
+                console.warn("child not found!");
+                return;
+            }
+            if(c !== this.cursor) {
+                console.warn("Input on non-cursor node? How?!");
+            }
         }
 
         
-        let changed = null;
-        const p = c.getParent();
-        const nc = p ? c : this.mdom;
+
+        
+        //let changed = null;
+        //const p = c.getParent();
+        //const nc = p ? c : this.mdom;
+
 
         /*
-        How to input something:
-
-        -> travel (from the left element) upwards in the dom while the current element is "protected" (so, dont edit a infixOperators infix Symbol)
-        -> ask this element if it has any special plans (>=, multi-char literal, matrix) with this input; 
-            it might return 
-                continue with this element 
-                continue with the given element (it must be called, but must not redirect another time)
-                drop the input
-                everything is done, refresh katex
-        -> analyze input: what to insert or to do with it?
-        -> travel upwards in the dom while the current element has higher precedence and traveling upwards wouldn't change 
-           beeing the rightmost element (so that there won't appear parentheses)
-        -> now simply insert this element
-
-
         What about prefix negation and stuff?
         -> simply use the normal infixOperator for this. It will hide placeHolder if left to it is nothing or parentheses, e.g.
             x^-1, x+(-1) and R^+
         are absolutely ok
+
+
+        Expected Behaviour:
+            2|3 -> 2+3
+            2|3 -> 233
+            2|3 -> 2a3
+            a*b|+c -> (a*b-?)+c)
+            a*b+|1 -> a*b+(-1)
+
+            (strongly prefers non-operators and left)
+            a*b+|c -> a*b+ {^? c}
+            a*b+| -> a*b+{^?}
+            a*b+c| -> a*b+c^?
+            a|b -> a^? b
+            a|b --prescript--> a {^? b}
+            
+            (but you can add indices to operators by marking the operator or using prescript)
+            a[+]b -> a{+^?}b
+            a|+b --prescrept--> a{^? +}b
+            
         */
 
         
         switch(e.key) {
-            case "Backspace":
-                console.warn("TODO: backspace")
-            break;
-            case "Delete":
-                console.warn("TODO: delete")
-            break;
+           
             case "ArrowLeft":
                 if(e.shiftKey) {
                     console.warn("TODO: Left")
@@ -644,15 +672,7 @@ export class Cursor {
                     console.warn("TODO: Right")
 
                 } else {
-                    const i = tutil.getVisualIndex(this.cursor, this.dummyEle);
-                    if(i >= this.dummyEle.children.length - 1) {
-                        // TODO: Callback: Exit to the right
-                    } else if(i >= 0) {
-                        const nc = tutil.getByVisualIndex(i + 1, this.mdom, this.dummyEle);
-                        if(nc) {
-                            this.setCursor(nc);
-                        }
-                    }
+                    this.moveCursorRight(this.cursor);
                 }
             break;
             case "ArrowUp":
@@ -691,32 +711,59 @@ export class Cursor {
                 }
             break;
 
-            default:            
+            default:   
+            
+
+                if(e.key == "Delete") // TODO: Do delete in a smarter, more generic way
+                    this.moveCursorRight(this.cursor);
+
+                if(this.selection) {
+                    const sel = this.selection;
+                    this.moveCursorRight(sel);
+
+
+                    const p = sel.getParent();
+                    if(p) {
+                       p.input(e.key, sel, true); 
+                    } else {
+                        alert("TODO");
+                    }
+                } else {
+                    c.input(e.key, null, false);
+                }
+
+                
+
+                
+                this.onRefresh(this.mdom);
+                
+            /*
                 if( util.hasElement(e.key, ["*", "+", "-"])) { // Insert binary Operator
                     const inputToCmd = {"*": "\\cdot", "+": "+", "-": "-" };
-                    changed = new io.binaryInfixOperator(new li.Placeholder(), nc, inputToCmd[e.key]);
+                    
+                    //changed = new io.binaryInfixOperator(new li.Placeholder(), nc, inputToCmd[e.key], this.config);
                 }
                 else if( util.hasElement(e.key, ["("])) { // Insert Parentheses
                      
                 }
                 else if(e.key.length === 1 && isAlphaNumeric(e.key)) {
                     let insert = e.key;
-                    changed = new li.LeftInput(nc, insert);
+                    changed = new li.LeftInput(nc, insert, this.config);
                 }
-                    
+                  */  
             
         }
-
+/*
         if(changed)  {      
-            if(p) {
+            if(p) { // if the changed element has a parent, replace the element
                 const i = p.getIndex(c);
                 p.setChild(changed, i);
                 this.onRefresh(this.mdom);
-            } else {
+            } else { // otherwise, just change the root
                 this.mdom = changed;
                 this.onRefresh(this.mdom);
             }
-        }
+        }*/
     };
 
     public buildDummy(mdom: MNode) {
@@ -733,21 +780,6 @@ export class Cursor {
     }
 } 
 
-
-// https://stackoverflow.com/a/25352300/6144727
-function isAlphaNumeric(str) {
-    var code, i, len;
-  
-    for (i = 0, len = str.length; i < len; i++) {
-      code = str.charCodeAt(i);
-      if (!(code > 47 && code < 58) && // numeric (0-9)
-          !(code > 64 && code < 91) && // upper alpha (A-Z)
-          !(code > 96 && code < 123)) { // lower alpha (a-z)
-        return false;
-      }
-    }
-    return true;
-};
 
 // TODO: Doesn't work!
 // https://stackoverflow.com/a/4183448/6144727
