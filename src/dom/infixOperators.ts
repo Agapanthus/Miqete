@@ -1,10 +1,14 @@
 
-import { MNode, Vector, Creator, Selectable } from "./mdom";
+import { MNode, Vector, Creator, Selectable, maxPrec, Empty } from "./mdom";
 import * as tutil from "./util";
 import * as l from "./literals";
 import { Config } from "../util/config";
 import { Parentheses } from "./parentheses";
 
+
+const LCHILD = 0;
+const RCHILD = 1;
+const OPERATOR = 2;
 
 const infixOperators = {
     "+": {
@@ -22,6 +26,11 @@ const infixOperators = {
         prec: 30,
         assoc: ["\\cdot"]
     },
+    "" : { // The default-Operator
+        html: "",
+        prec: maxPrec,
+        assoc: [""]
+    }
     /*"/": {
         html: "/", 
         prec: 30,
@@ -85,9 +94,6 @@ export class binaryInfixOperator extends MNode {
         return this.prec;
     }
 
-    private katexCmd;
-    private htmlSym;
-    private config: Config;
 
     private mySymbol : {
         html: string,
@@ -95,100 +101,117 @@ export class binaryInfixOperator extends MNode {
         assoc: string[]
     };
 
-    constructor(a: MNode, b: MNode, katexCmd: string, config: Config) {
+    constructor(a: MNode, b: MNode, private katexCmd: string, private config: Config) {
         super();
-        this.config = config;
 
-        this.setChild(a, 0);
-        this.setChild(b, 1);
-        this.setChild(new l.Symbol(katexCmd, this.config), 2);
+        this.setChild(a, LCHILD);
+        this.setChild(b, RCHILD);
+        this.setChild(katexCmd.length > 0 ?
+                new l.Symbol(katexCmd, this.config, false)
+                : new Empty(), OPERATOR);
 
         this.mySymbol = infixOperators[katexCmd];
         if(!this.mySymbol) console.error("Unknown symbol " + katexCmd);
         this.prec = this.mySymbol.prec;
-        this.katexCmd = katexCmd;
-        this.htmlSym = this.mySymbol.html;
     }
     
     public createSelectionAreas(c: Creator): void {
-        this.child(0).createSelectionAreas(c);
-        this.child(2).createSelectionAreas(c);
-        this.child(1).createSelectionAreas(c);
+        this.child(LCHILD).createSelectionAreas(c);
+        this.child(OPERATOR).createSelectionAreas(c);
+        this.child(RCHILD).createSelectionAreas(c);
     }
 
     public strip(): MNode {
-        this.setChild(this.child(0).strip(), 0);
-        this.setChild(this.child(1).strip(), 1);
+        this.setChild(this.child(LCHILD).strip(), LCHILD);
+        this.setChild(this.child(RCHILD).strip(), RCHILD);
         return this;
     }
 
     public bake(): MNode {
-        this.setChild(this.child(0).bake(), 0);
-        this.setChild(this.child(1).bake(), 1);
+        this.setChild(this.child(LCHILD).bake(), LCHILD);
+        this.setChild(this.child(RCHILD).bake(), RCHILD);
         if(this.aNeedsParens()) {
-            this.setChild(new Parentheses(this.child(0), "(", ")"), 0);
+            this.setChild(new Parentheses(this.child(LCHILD), "(", ")"), LCHILD);
         }
         if(this.bNeedsParens()) {
-            this.setChild(new Parentheses(this.child(1), "(", ")"), 1);
+            this.setChild(new Parentheses(this.child(RCHILD), "(", ")"), RCHILD);
         }
         return this;
     }
 
     public rKatex(e: Element): void {
+        const o = e;
+        const empty = this.child(OPERATOR) instanceof Empty;
 
-        while(e != null && e.children !== null && e.children.length >= 1 && e.children.length !== 5) {
-            if(e.children.length === 5) break;
-            if(e.children.length === 3) break;
-
-            e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
-        }
-        if(e === null || e.children === null || (e.children.length !== 5 && e.children.length !== 3)) {
-            console.error("Expected 3 or 5 children");
-            console.log(e);
-        }
-        const ec = e.children;
-        if(e.children.length === 5) {
-           /* if(tutil.directTextContent(ec[2]) !== this.htmlSym) {
-                console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[2]));
-            }*/
-            
-            this.child(2).rKatex(ec[2]);
-            this.child(0).rKatex(ec[0]);
-            this.child(1).rKatex(ec[4]);
-
+        if(empty) {
+            while(e != null && e.children !== null && e.children.length >= 1) {
+                if(e.children.length === 4) break;
+                if(e.children.length === 3) break;
+                e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
+            }
+            if(e === null || e.children === null || (e.children.length !== 4 && e.children.length !== 3)) {
+                console.error("Expected 3 or 4 children",e,o);
+            }
+            const ec = e.children;
+            if(e.children.length === 4) {
+                this.child(LCHILD).rKatex(ec[0]);
+                this.child(RCHILD).rKatex(ec[3]);
+            } else if(e.children.length === 3) {
+                this.child(LCHILD).rKatex(ec[0]);
+                this.child(RCHILD).rKatex(ec[2]);
+            }
         } else {
-           /* if(tutil.directTextContent(ec[1]) !== this.htmlSym) {
-                console.error("Expected " + this.htmlSym + " but found " + tutil.directTextContent(ec[1]));
-            }*/
-            
-            this.child(2).rKatex(ec[1]);
-            this.child(0).rKatex(ec[0]);
-            this.child(1).rKatex(ec[2]);
+            while(e != null && e.children !== null && e.children.length >= 1) {
+                if(e.children.length === 5) break;
+                if(e.children.length === 3) break;
+                e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
+            }
+            if(e === null || e.children === null || (e.children.length !== 5 && e.children.length !== 3 )) {
+                console.error("Expected 3 or 5 children",e,o);
+            }
+            const ec = e.children;
+            if(e.children.length === 5) {
+                this.child(OPERATOR).rKatex(ec[2]);
+                this.child(LCHILD).rKatex(ec[0]);
+                this.child(RCHILD).rKatex(ec[4]);
+            } else {            
+                this.child(OPERATOR).rKatex(ec[1]);
+                this.child(LCHILD).rKatex(ec[0]);
+                this.child(RCHILD).rKatex(ec[2]);
+            }
         }
     }
     
     public sync(br: Vector) { 
-        this.child(0).sync(br);
-        this.child(2).sync(br);
-        this.child(1).sync(br);
+        this.child(LCHILD).sync(br);
+        this.child(OPERATOR).sync(br);
+        this.child(RCHILD).sync(br);
     }
 
     private bNeedsParens() {
         if(!this.config.semantics) return false;
-        return (this.child(1).precendence() < this.precendence()) 
+        const res = (this.child(RCHILD).precendence() < this.precendence()) 
                     // Beware: when the operator is not associative, you  
-                    || ((this.child(1).precendence() === this.precendence()) && !this.isAssociative())
+                    || ((this.child(RCHILD).precendence() === this.precendence()) && !this.isAssociative())
+        return res;
     }
     private aNeedsParens() {
         if(!this.config.semantics) return false;
-        return this.child(0).precendence() < this.precendence();
+        return this.child(LCHILD).precendence() < this.precendence();
     }
 
     public toKatex() {    
+        if(this.aNeedsParens()) {
+            this.setChild(new Parentheses(this.child(LCHILD), "(", ")", true), LCHILD);
+        }
+        if(this.bNeedsParens()) {
+            this.setChild(new Parentheses(this.child(RCHILD), "(", ")", true), RCHILD);
+        }
+        
         return "{"
-            + tutil.opar(this.child(0).toKatex(), this.aNeedsParens()) 
-            + this.child(2).toKatex() 
-            + tutil.opar(this.child(1).toKatex(), this.bNeedsParens()) 
+            + this.child(LCHILD).toKatex()
+            + this.child(OPERATOR).toKatex() 
+            + this.child(RCHILD).toKatex()
             + "}";
     }
 
@@ -212,9 +235,10 @@ export class binaryInfixOperator extends MNode {
 
     public isAssociative(): boolean {
         if(!this.config.semantics) return true;
+        if(this.child(RCHILD) instanceof Parentheses) return true;
 
-        if(this.child(1) instanceof binaryInfixOperator) {
-            return this.isRightAssociative(this.child(1));
+        if(this.child(RCHILD) instanceof binaryInfixOperator) {
+            return this.isRightAssociative(this.child(RCHILD));
         } 
         return false;
     }
@@ -225,7 +249,7 @@ export class binaryInfixOperator extends MNode {
     // Checks if this is the leftmost child in this BIO-area
     public isLeftmostChild(a: MNode): boolean {
         if(this === a) return true;
-        const c = this.child(0);
+        const c = this.child(LCHILD);
         if(c === a) return true;
         if(c instanceof binaryInfixOperator) {
             return c.isLeftmostChild(a);
@@ -235,7 +259,7 @@ export class binaryInfixOperator extends MNode {
     // Checks if this is the rightmost child in this BIO-area
     public isRightmostChild(a: MNode): boolean {
         if(this === a) return true;
-        const c = this.child(1);
+        const c = this.child(RCHILD);
         if(c === a) return true;
         if(c instanceof binaryInfixOperator) {
             return c.isRightmostChild(a);
@@ -243,8 +267,36 @@ export class binaryInfixOperator extends MNode {
     }
 
     public input(e: string, child: MNode, operate: boolean) {
+        
+    
 
-        // TODO
+        if(!operate) {
+            if(child == this.child(LCHILD)) {
+                // TODO: handle delete
+
+                // Redirect from first child to parent
+                const p = this.getParent();
+                if(p) p.input(e, this, operate);
+
+            } else if(child == this.child(OPERATOR)) {
+                // Redirect everything from the operator to the first child
+                console.log("left");
+                this.child(LCHILD).input(e, null, false);
+
+            } else if(child == this.child(RCHILD)) {
+                // TODO: handle backspace
+
+            } else if(child == null) {
+                // Redirect to the right child
+                console.log("right");
+                this.child(RCHILD).input(e, null, false);
+                
+            } else console.error("Unreachable", child);
+        } else {
+            // TODO
+        }
+
+
     }
 }
 

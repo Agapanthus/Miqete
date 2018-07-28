@@ -1,10 +1,11 @@
 
-import { MNode, Vector, Creator, Selectable, maxPrec } from "./mdom";
+import { MNode, Vector, Creator, maxPrec } from "./mdom";
 import { Literal } from "./literals";
 import * as util from "../util/util";
 import * as tutil from "./util";
 import { Config } from "../util/config";
 import { MNodePair, Splitable } from "./inputImporter";
+import { Sequence } from "./sequence";
 
 export function init() {
     (window as any).defaultInput = defaultInput;
@@ -76,7 +77,7 @@ class InputObject extends MNode  {
         return maxPrec;
     }
 
-    constructor(children: MNodePair, initialInput: string, config: Config) {
+    constructor(children: MNodePair, initialInput: string, private config: Config) {
         super();
 
         const hosted = children;
@@ -86,7 +87,7 @@ class InputObject extends MNode  {
         if(initialInput.length !== 1) console.error("Input needs an 1-char-input!", initialInput);
         if(!util.isAsciiPrintableString(initialInput)) console.error("Input needs an printable input!", initialInput);
 
-        const field = new InputString(initialInput, config);
+        const field = new Text(initialInput, config);
         this.setChild(field, 0);
 
         let i = 1;
@@ -186,7 +187,7 @@ class InputObject extends MNode  {
         let k = "";
         if(hosted.left)  k += hosted.left.toKatex();
          
-        k += "\\mathinner{\\color{#aac}{" /*\\text*/ + this.child(0).toKatex() + "}}" // TODO: We REALLY NEED TEXT, but then we dont have separate containers for the glyphs.
+        k += "\\mathinner{\\color{#aac}{"  + this.child(0).toKatex() + "}}"
         
         if(hosted.right) k += hosted.right.toKatex();
 
@@ -204,19 +205,35 @@ class InputObject extends MNode  {
         }
         // TODO
     }
+
+    public join() {
+        if( (!this.left) || (!this.right)) {
+            const p = this.forceGetParent();
+            p.replace(this, this.child(1));
+        } else if((!this.left) && (!this.right)) {
+            // TODO: What?!
+        } else {
+            const p = this.forceGetParent();
+            const seq = new Sequence(this.child(1), this.child(2), this.config);
+            p.replace(this, seq);
+            seq.tryJoin();
+        }
+
+    }
 }
 
 
-export class InputString extends Literal {
+
+export class Text extends Literal {
     
     constructor(str: string, config: Config) {
-        super(str, config);
+        super(str, config, true);
     }
 
     public set(str: string) {
         this.setSValue(str);
     }
-
+    // \\text
     // TODO: toKatex: Latex-escape! 
 
     public input(e: string, child: MNode, operate: boolean) {
@@ -230,7 +247,6 @@ export class InputString extends Literal {
         const ind = child ? this.getIndex(child) : this.getChildren().length; // if no child is given, think of an input at the very end
         if(ind < 0) console.error("Invalid index!");
 
-        // Insert number
         if(prin || (backsp && ind > 0) || del) {
             const s = this.getSValue();
 
@@ -246,19 +262,16 @@ export class InputString extends Literal {
             if(backsp || del) a = "";
             const n = start + a + end; // Insert new string
 
-            this.set(n);
+            if(n.length <= 0) {
+                // Destroy self and recover parent
+                const p = this.getParent();
+                if(p instanceof InputObject) {
+                    p.join();
+                } else console.error("Parent must be inputobject!", p);
+
+            } else this.set(n);
                   
         }   
 
     }
 }
-
-/*
-
-export class Placeholder extends l.Glyph {
-    
-    constructor() {
-        super("\\color{lightgrey}\\blacklozenge\\color{black}");
-    }
-
-}*/

@@ -11,6 +11,10 @@ export interface MNodePair {
 }
 
 export interface Splitable {
+    
+    // Split item at given child - this might give one or two results.
+    // if operate is true, that child should be removed
+    // if child==null, you should think of it as past the last child
     split(child: MNode, operate: boolean) : MNodePair;
 }
 

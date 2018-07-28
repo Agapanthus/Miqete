@@ -46,6 +46,7 @@
     "jquery": "^3.3.1",
     "modernizr": "^3.6.0",
     "typestyle": "^1.7.2",
-    "katex": "^0.10.0-beta"
+    "katex": "^0.10.0-beta",
+    "escape-latex": "^1.1.0"
   }
 }

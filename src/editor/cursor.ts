@@ -706,21 +706,11 @@ export class Cursor {
                 } else console.error("not found");
             } break;
             
-            case "Enter":
-                console.warn("TODO: Enter")
-            break;
-            
-            case " ":
-                console.warn("TODO: Space")
-                if(e.shiftKey || e.ctrlKey) {
-
-                }
-            break;
 
             default:   
             
 
-                if(e.key == "Delete") // TODO: Do delete in a smarter, more generic way
+                if(e.key == "Delete") // TODO: Move the cursor in a smarter, more generic way
                     this.moveCursorRight(this.cursor);
 
                 if(this.selection) {

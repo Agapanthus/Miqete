@@ -58,7 +58,9 @@ export abstract class Creator {
 
 export abstract class MNode  {
 
-    // Something has been typed here 
+    // Something has been typed here
+    // "child" is the child where this event has been triggered before (or you should think it has been), if there is no child, this should be interpreted as "after the last child".
+    // operate is true, if one should apply whatever is done to that child
     public abstract input(e: string, child: MNode, operate: boolean): void;
 
     // Returns the katex-string of this element and all its children
@@ -92,6 +94,12 @@ export abstract class MNode  {
     public getParent(): MNode {
         return this.parent;
     }
+    public forceGetParent(): MNode {
+        if(!this.parent) {
+            console.error("You must not call this on singular or root Nodes!"); // TODO: Handle error 
+        }
+        return this.parent;
+    }
     public setChild(child: MNode, index: number) {
         if(this.children.length < index) {
             throw "Invalid index";
@@ -108,17 +116,7 @@ export abstract class MNode  {
         }
         this.children = [];
     }
-    /*public replace(by: MNode) {
-        if(!this.parent) throw "Parent does not exist!";
-        for(const i in this.parent.children) {
-            if(this.parent.child(parseInt(i)) === this) {
-                console.log("added " + i);                
-                this.parent.setChild(by, parseInt(i));
-                return;
-            }
-        }
-        throw "Child not found";
-    }*/
+   
     public getIndex(child: MNode) : number {
         for(const i in this.children) {
             if(this.child(parseInt(i)) === child) {
@@ -126,6 +124,12 @@ export abstract class MNode  {
             }
         }
         return -1;
+    }
+
+    public replace(child: MNode, by: MNode) {
+        const ind = this.getIndex(child);
+        if(ind < 0) console.error("That element must be a direct child!"); // TODO: Handle error
+        this.setChild(by, ind);
     }
    
     public child(index: number) : MNode {
@@ -147,6 +151,31 @@ export abstract class MNode  {
     public abstract precendence(): number;
 
 };
+
+
+export class Empty extends MNode {
+
+    public input(e: string, child: MNode, operate: boolean): void {
+        console.error("empty node shouldn't receive input");
+    }
+
+    public toKatex(): string {
+        return "{}";
+    }
+
+    public rKatex(parent: Element): void {}
+    
+    public sync(br: Vector): void {}
+
+    public strip(): MNode { return this; }
+
+    public bake(): MNode { return this; }
+
+    public createSelectionAreas(creator: Creator): void {}
+
+    public precendence() { return maxPrec; }
+
+}
 
 
 export const maxPrec = 1000000;

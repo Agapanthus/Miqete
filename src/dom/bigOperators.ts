@@ -121,11 +121,14 @@ export class bigPrefixOperator extends MNode implements Selectable {
     }
 
     public toKatex() {
+        if(this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) {
+            this.setChild(new Parentheses(this.child(2), "(", ")", true), 2);
+        }
     
         return "{" + this.katexCmd
             + "_" + this.child(0).toKatex() 
             + "^" + this.child(1).toKatex() 
-            + tutil.opar(this.child(2).toKatex(), this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) 
+            + this.child(2).toKatex() 
             + "}";
     }
 

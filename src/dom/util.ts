@@ -109,20 +109,6 @@ export function getNextInSameLayer(index: number, dom: MNode, parent: Element): 
 
 
 
-
-// Add automatically-generated silent parentheses
-export function opar(inner: string, addPar: boolean) {
-    if(addPar) return "\\color{lightgrey}\\left(\\color{black}" + inner + "\\color{lightgrey}\\right)\\color{black}";
-    return inner;
-}
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 export function directTextContent(e: Element) {
     if(e && e.firstChild  && e.firstChild .nodeType === Node.TEXT_NODE) {
         return e.firstChild.nodeValue;

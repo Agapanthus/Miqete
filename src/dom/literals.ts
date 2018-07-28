@@ -5,23 +5,23 @@ import * as tutil from "./util";
 import * as util from "../util/util";
 import { Config } from "../util/config";
 import { defaultInput, MNodePair, Splitable } from "./inputImporter";
+import { Joinable } from "./sequence";
+
+
 
 // One single Glyph - like "1" or "\\alpha"
 export abstract class Glyph extends MNode implements Selectable {
-    public e: Element
-    public s: HTMLElement
-    public size: Vector
-    public pos: Vector
+    public e: Element;
+    public s: HTMLElement;
+    public size: Vector;
+    public pos: Vector;
 
     public precendence(): number {
         return maxPrec;
     }
 
-    private value: string;
-
-    constructor(value: string) {
+    constructor(private value: string, private isText: boolean) {
         super();
-        this.value = value;  
         //if(this.value.length !== 1) throw "Glyph only accepts glyphs";  // ...or katex code. 
     }
 
@@ -50,6 +50,12 @@ export abstract class Glyph extends MNode implements Selectable {
     }
 
     public toKatex() {
+        if(this.isText) {
+            if(this.value.length != 1) console.error("only characters!");      
+            const esc = util.latexEscape(this.value);
+            if(esc == "\\backslash") return esc+" ";     
+            return "\\text{" + esc + "}";  
+        }
         return " " + this.value + " "; 
     }
 }
@@ -58,8 +64,7 @@ export abstract class Glyph extends MNode implements Selectable {
 // Multiple characters like "abc"
 // TODO: You can only select one or all chars. Maybe we could use an invisible infixOperator to make an associative character-tree?
 export abstract class Literal extends MNode {
-    private value: string;
-
+  
     public e: Element
 
     private glyphs: Glyph[]
@@ -68,13 +73,12 @@ export abstract class Literal extends MNode {
     public precendence(): number {
         return maxPrec;
     }
-
-    protected config: Config;
-
-    constructor(value: string, config: Config) {
+    
+    constructor(
+            private value: string, 
+            protected config: Config, 
+            private isText: boolean) {
         super()
-        this.value = "";
-        this.config = config;
         this.setSValue(value);
     }
 
@@ -95,11 +99,11 @@ export abstract class Literal extends MNode {
         this.value = value    
         let i = 0;
         for(const char of value) {
-            if(i > lastChange_n) {
+            if(ch.length > 0 && i > lastChange_n) {
                 this.setChild(ch[i - lastChange_n + lastChange_o], i)
                 i++
             } else {
-                const sym = new Symbol(char, this.config)
+                const sym = new Symbol(char, this.config, this.isText)
                 this.setChild(sym, i++)
             }
 
@@ -109,25 +113,30 @@ export abstract class Literal extends MNode {
 
     public rKatex(e: Element) {
         const t = tutil.tfcwc(e);
-        if(!t) console.error("Must exist!")
-        this.e = t.parentElement
-        if(!this.e) console.error("Must exist!")
-        const ch = this.getChildren()
-        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!",this.e.children, ch)
-        let i = 0
+        if(!t) console.error("Must exist!");
+        this.e = t.parentElement;
+        if(!this.e) console.error("Must exist!");
+        if(util.hasElement("text", this.e.className.split(" "))) {
+            // If it is a textnode, go one level more up
+            this.e = this.e.parentElement;
+            if(!this.e) console.error("Must exist!");
+        }
+        const ch = this.getChildren();
+        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!",this.e.children, ch);
+        let i = 0;
         for(const c of ch) {
-            c.rKatex(this.e.children[i++])
+            c.rKatex(this.e.children[i++]);
         } 
     }
 
     public getSValue(): string {
-        return this.value
+        return this.value;
     }
 
     public sync(br: Vector) { 
         const ch = this.getChildren();
         for(const c of ch) {
-            c.sync(br)
+            c.sync(br);
         } 
     }
 
@@ -146,7 +155,13 @@ export abstract class Literal extends MNode {
     }
 
     public toKatex() {
-        return "{" + this.value + "}";
+        //return "{" + this.value + "}";
+        let k = "";
+        const ch = this.getChildren();
+        for(const c of ch) {
+            k += c.toKatex();
+        } 
+        return "{" + k + "}";
         // How to handel something like "orf b c" (orf times b times c)? It is displayed as "or f bc"
         // ---> Use \mathinner to get some tiny, optional space around the string
         // ---> use textit to remove spaces (mathit won't work with katex)
@@ -156,19 +171,13 @@ export abstract class Literal extends MNode {
 
 
 // TODO: Internally use always string representation! number is baaaaaaad! 
-export class Integer extends Literal implements Splitable {
-    private v: number;
-
-    constructor(i: number, config: Config) {
-        super(i.toString(), config);
+export class Integer extends Literal implements Splitable, Joinable {
+   
+    constructor(i: string|number, config: Config) {
+        super(i.toString(), config, false);
         if(i <= 0) throw "Only non-negative integers!";
-        this.v = i;
     }
 
-
-    public getValue(): number {
-        return this.v;
-    } 
     
 
     public input(e: string, child: MNode, operate: boolean) {
@@ -181,7 +190,7 @@ export class Integer extends Literal implements Splitable {
 
         // Insert number
         if(num || (backsp && ind > 0) || del) {
-            const s = this.v.toString();
+            const s = this.getSValue();
 
             let start;
             if(backsp) start = s.slice(0, ind-1);
@@ -192,38 +201,43 @@ export class Integer extends Literal implements Splitable {
             else end = s.slice(ind, s.length);
             
             let ins = "";
-            if(num) ins = parseInt(e).toString(); 
+            if(num) ins = e; 
             const n = start + ins + end; // Insert new digits
 
-            this.v = parseInt(n);
-            this.setSValue(n);
+            if(n.length <= 0) {
+                // TODO: Destroy self. But replace by what?
+            } else this.setSValue(n);
 
-       
         } else {
             defaultInput(e, this, child, operate, this, this.config)
         }       
     }
 
-    // Split item at given child - this might give one or two results.
-    // if operate is true, that child should be removed
     public split(child: MNode, operate: boolean) : MNodePair {
 
-        const ind = this.getIndex(child);
+        const ind = child ? this.getIndex(child) : this.getChildren().length;
         if(ind < 0) console.error("Invalid index!");
 
-        const s = this.v.toString();
+        const s = this.getSValue();
         let start = s.slice(0, ind);
         let end;
         if(operate) end = s.slice(ind+1, s.length); // Slice out that digit
         else end = s.slice(ind, s.length);
         
-        this.v = parseInt(end);
         this.setSValue(end);
 
         return {
-            left: start.length==0 ? null : new Integer(parseInt(start), this.config),
+            left: start.length==0 ? null : new Integer(start, this.config),
             right: end.length==0 ? null : this
         }
+    }
+
+    public tryJoin(partner: MNode) : MNode {
+        if(partner instanceof Integer) {
+            this.setSValue(this.getSValue() + partner.getSValue());
+            return this;
+        }
+        return null;
     }
 }
 
@@ -233,8 +247,8 @@ export class Integer extends Literal implements Splitable {
 export class Symbol extends Glyph {
     private v: string;
 
-    constructor(i: string, config: Config) {
-        super(i);
+    constructor(i: string, config: Config, isText: boolean) {
+        super(i, isText);
         this.v = i;
     }
 

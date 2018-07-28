@@ -1,5 +1,6 @@
 import * as base64js from "base64-js";
 import * as $ from "jquery";
+import * as lescape from "escape-latex";
 
 
 export function defined(variable: any) {
@@ -28,7 +29,9 @@ export function updateState<T>(state: T, changes: Object) {
 
 export function isNumeric(num: string){
     if(!num || num.length <= 0) return false;
-    return !isNaN(num as any)
+
+    return num.match(/^-{0,1}\d+$/);
+    //!isNaN(num as any)
 }
 
 
@@ -45,6 +48,18 @@ export function isPrintableKey(keycode: number): boolean {
         (keycode > 95 && keycode < 112)  || // numpad keys
         (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
         (keycode > 218 && keycode < 223);   // [\]' (in order)
+}
+
+
+export function latexEscape(str: string) : string {
+    return lescape(str,
+        {
+            preseveFormatting: true,
+            escapeMapFn: function(defaultEscapes, formattingEscapes) {
+              formattingEscapes["\\"] = "\\backslash";
+              return (Object as any).assign({}, defaultEscapes, formattingEscapes);
+            }
+        });    
 }
 
 

@@ -42,6 +42,10 @@ class Brace extends MNode implements Selectable {
         this.e = tutil.tfcwc(e);
         if(this.e === null) console.error("Must exist!");
         if(tutil.directTextContent(this.e) !== this.brace) console.error("Expected "+ this.brace + " but found " + tutil.directTextContent(this.e));
+
+
+        // TODO: Large braces might be replaced by ⎠ ⎝ 
+        // In that cases, although, size is wrong.
     }
 
     public sync(br: Vector) { 
@@ -68,7 +72,7 @@ export class Parentheses extends MNode {
     private open: Brace;
     private close: Brace;
 
-    constructor(a: MNode, open: string, close: string) {
+    constructor(a: MNode, open: string, close: string, private proto: boolean = false) {
         super();
 
         this.open = new Brace(false, open);
