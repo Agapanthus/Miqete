@@ -4,7 +4,7 @@ import { Vector, MNode, maxPrec, Creator, Selectable} from "./mdom";
 import * as tutil from "./util";
 import * as util from "../util/util";
 import { Config } from "../util/config";
-
+import { defaultInput, MNodePair, Splitable } from "./inputImporter";
 
 // One single Glyph - like "1" or "\\alpha"
 export abstract class Glyph extends MNode implements Selectable {
@@ -56,6 +56,7 @@ export abstract class Glyph extends MNode implements Selectable {
 
 
 // Multiple characters like "abc"
+// TODO: You can only select one or all chars. Maybe we could use an invisible infixOperator to make an associative character-tree?
 export abstract class Literal extends MNode {
     private value: string;
 
@@ -68,7 +69,7 @@ export abstract class Literal extends MNode {
         return maxPrec;
     }
 
-    private config: Config;
+    protected config: Config;
 
     constructor(value: string, config: Config) {
         super()
@@ -77,7 +78,7 @@ export abstract class Literal extends MNode {
         this.setSValue(value);
     }
 
-    public setSValue(value: string): void {
+    protected setSValue(value: string): void {
         // TODO: Handle inputs like "\\alpha\\beta" and ""
         
         // Keep the last elements, so the focus won't get lost if it was there somewhere
@@ -112,7 +113,7 @@ export abstract class Literal extends MNode {
         this.e = t.parentElement
         if(!this.e) console.error("Must exist!")
         const ch = this.getChildren()
-        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!")
+        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!",this.e.children, ch)
         let i = 0
         for(const c of ch) {
             c.rKatex(this.e.children[i++])
@@ -152,7 +153,10 @@ export abstract class Literal extends MNode {
     }
 }
 
-export class Integer extends Literal {
+
+
+// TODO: Internally use always string representation! number is baaaaaaad! 
+export class Integer extends Literal implements Splitable {
     private v: number;
 
     constructor(i: number, config: Config) {
@@ -165,42 +169,65 @@ export class Integer extends Literal {
     public getValue(): number {
         return this.v;
     } 
+    
 
     public input(e: string, child: MNode, operate: boolean) {
         
         const backsp = e == "Backspace"
         const del = e == "Delete"
-        const ind = this.getIndex(child);
+        const ind = child ? this.getIndex(child) : this.getChildren().length; // if no child is given, think of an input at the very end
+        if(ind < 0) console.error("Invalid index!");
         const num = e.length == 1 && util.isNumeric(e);
 
         // Insert number
         if(num || (backsp && ind > 0) || del) {
             const s = this.v.toString();
 
-            let start
-            if(backsp) start = s.slice(0, ind-1)
-            else start = s.slice(0, ind)
+            let start;
+            if(backsp) start = s.slice(0, ind-1);
+            else start = s.slice(0, ind);
 
-            let end
-            if(operate || del) end = s.slice(ind+1, s.length) // Slice out that digit
-            else end = s.slice(ind, s.length)
+            let end;
+            if(operate || del) end = s.slice(ind+1, s.length); // Slice out that digit
+            else end = s.slice(ind, s.length);
             
             let ins = "";
-            if(num) ins = parseInt(e).toString();  /// TODO: You MUST use bigints! JS will automatically use e-notation, which is really problematic!
+            if(num) ins = parseInt(e).toString(); 
             const n = start + ins + end; // Insert new digits
 
             this.v = parseInt(n);
             this.setSValue(n);
 
-        // Redirect backspace
-        
-            
+       
         } else {
-            // TODO: Default action: Split this thing into two (or three) parts and put them into an input container. This container will capture focus and do all the default processing.
-            // Use \mathinner{\color{#aac}{\text{for\}for}}} h
+            defaultInput(e, this, child, operate, this, this.config)
         }       
     }
+
+    // Split item at given child - this might give one or two results.
+    // if operate is true, that child should be removed
+    public split(child: MNode, operate: boolean) : MNodePair {
+
+        const ind = this.getIndex(child);
+        if(ind < 0) console.error("Invalid index!");
+
+        const s = this.v.toString();
+        let start = s.slice(0, ind);
+        let end;
+        if(operate) end = s.slice(ind+1, s.length); // Slice out that digit
+        else end = s.slice(ind, s.length);
+        
+        this.v = parseInt(end);
+        this.setSValue(end);
+
+        return {
+            left: start.length==0 ? null : new Integer(parseInt(start), this.config),
+            right: end.length==0 ? null : this
+        }
+    }
 }
+
+
 
 // Single Glyph redirecting all inputs to its parent
 export class Symbol extends Glyph {

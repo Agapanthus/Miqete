@@ -1,17 +1,16 @@
 import { MNode, Vector, maxPrec, Creator, Selectable } from "./mdom";
 
 import * as tutil from "./util";
-import * as l from "./literals";
+import { Config } from "../util/config";
 import { Parentheses } from "./parentheses";
 import { Layer } from "./layer";
-import { Config } from "../util/config";
 
 
 
 
 const bigOperators = {
     "\\sum": {
-        html: "\u2211", 
+        html: "\u2211",
         prec: 21,
         assoc: ["+"] // TODO: Implement this. Also, associative with infixOperators!
     },

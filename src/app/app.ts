@@ -12,6 +12,7 @@ import 'katex/dist/katex.min.css';
 import * as io from "../dom/infixOperators";
 import * as bo from "../dom/bigOperators";
 import * as l from "../dom/literals";
+import { init } from "../dom/input";
 
 import * as $ from "jquery";
 import { mPrint } from "../dom/util";
@@ -166,6 +167,7 @@ window.onload = ()=> {
   //if(!Modernizr.mutationobserver) alert("TODO: Error: MutationObserver");
   //if(!Modernizr.requestanimationframe) alert("TODO: Error: Request Animation Frame");
 
+  init(); // Init solveCirc
 
   buildGUI();
 

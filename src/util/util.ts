@@ -32,9 +32,24 @@ export function isNumeric(num: string){
 }
 
 
+// https://stackoverflow.com/a/1677660/6144727
+export function isAsciiPrintableString(str: string): boolean {
+    return !(/[\x00-\x1F\x80-\xFF]/.test(str));
+}
+
+// https://stackoverflow.com/a/12467610/6144727
+export function isPrintableKey(keycode: number): boolean {
+    return (keycode > 47 && keycode < 58)   || // number keys
+        keycode == 32 || keycode == 13   || // spacebar & return key(s) (if you want to allow carriage returns)
+        (keycode > 64 && keycode < 91)   || // letter keys
+        (keycode > 95 && keycode < 112)  || // numpad keys
+        (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
+        (keycode > 218 && keycode < 223);   // [\]' (in order)
+}
+
 
 // https://stackoverflow.com/a/25352300/6144727
-function isAlphaNumeric(str) {
+export function isAlphaNumeric(str) {
     var code, i, len;
   
     for (i = 0, len = str.length; i < len; i++) {

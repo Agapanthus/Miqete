@@ -119,19 +119,20 @@ export abstract class MNode  {
         }
         throw "Child not found";
     }*/
-    public getIndex(child: MNode) {
+    public getIndex(child: MNode) : number {
         for(const i in this.children) {
             if(this.child(parseInt(i)) === child) {
                 return parseInt(i);
             }
         }
-        return null;
+        return -1;
     }
-    public child(index: number) {
+   
+    public child(index: number) : MNode {
         if(!this.children[index]) throw "invalid index!";
         return this.children[index];
     }
-    public setParent__INTERNAL(parent: MNode) {
+    public setParent__INTERNAL(parent: MNode): void {
         this.parent = parent;
     }
 

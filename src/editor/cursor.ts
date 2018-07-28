@@ -48,7 +48,8 @@ export namespace css {
         "-ms-user-select": "auto",
         "-webkit-user-select": "auto",
         overflow: "hidden",
-       // background:  "rgba(100,100,255,0.2)", // Use this for debugging
+
+        //background:  "rgba(100,100,255,0.2)", boxShadow: "inset 0 0 1px #000000", // DEBUG: Use this for debugging
 
         position: "absolute",
         cursor: "text",
@@ -228,15 +229,20 @@ class Creator_impl extends Creator {
     public pop(): HTMLElement {
         const last = this.stack[this.stack.length - 1];
         
-        
-        if(last.fill) {
-            // Create a filler-element
-            const filler = this.add(new Vector(last.bottomright.x, last.lastPos.y), new Vector(-1,-1));
-            this.stack.pop();
-            return filler;
-        } else {            
-            // Simply finish the element
-            this.add(new Vector(last.bottomright.x, last.lastPos.y), null);
+        if(last.bottomright) {
+            if(last.fill) {
+                // Create a filler-element
+                const filler = this.add(new Vector(last.bottomright.x, last.lastPos.y), new Vector(-1,-1));
+                this.stack.pop();
+                return filler;
+            } else {            
+                // Simply finish the element
+                this.add(new Vector(last.bottomright.x, last.lastPos.y), null);
+                this.stack.pop();
+                return null;
+            }
+        } else {
+            // Nothing added, nothing to do.
             this.stack.pop();
             return null;
         }

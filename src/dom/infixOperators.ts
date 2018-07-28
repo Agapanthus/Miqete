@@ -143,7 +143,7 @@ export class binaryInfixOperator extends MNode {
             e = tutil.getFirstChildNotClass(e, tutil.katexDontFollow);
         }
         if(e === null || e.children === null || (e.children.length !== 5 && e.children.length !== 3)) {
-            console.error("Expected 5 children");
+            console.error("Expected 3 or 5 children");
             console.log(e);
         }
         const ec = e.children;
