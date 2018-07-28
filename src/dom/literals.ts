@@ -234,8 +234,8 @@ export class Integer extends Literal implements Splitable, Joinable {
 
     public tryJoin(partner: MNode) : MNode {
         if(partner instanceof Integer) {
-            this.setSValue(this.getSValue() + partner.getSValue());
-            return this;
+            partner.setSValue(this.getSValue() + partner.getSValue());
+            return partner;
         }
         return null;
     }

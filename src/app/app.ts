@@ -150,7 +150,7 @@ const buildGUI: () => void = () => {
 
   const mdom = (c.Sum( c.Int(112), c.Int(19), 
         c.Mul( c.Add( c.Add( c.Add(c.Add(c.Int(1941), sum ), c.Mul(c.Int(3), c.Int(3))), c.Int(4)), c.Int(5)), c.Int(2))
-      )).bake() //.strip();
+      )); //.bake() //.strip();
 
   new Editor(element, mdom, config);
 

@@ -132,9 +132,16 @@ export class Parentheses extends MNode {
     }
 
     public toKatex(): string {
-        return "{" + this.child(0).toKatex()
+        let a = "";
+        let b = "";
+        if(this.proto) {
+            a = "\\color{lightgrey}";
+            b = "\\color{black}";
+        }
+        return "{" + a + this.child(0).toKatex() + b
             + this.child(1).toKatex()
-            + this.child(2).toKatex() + "}";
+            + a + this.child(2).toKatex() + b + "}";
+        
     }
 
     public input(e: string, child: MNode, operate: boolean) {
