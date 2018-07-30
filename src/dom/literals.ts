@@ -52,7 +52,8 @@ export abstract class Glyph extends MNode implements Selectable {
         if(this.isText) {
             if(this.value.length != 1) console.error("only characters!");      
             const esc = util.latexEscape(this.value);
-            if(esc == "\\backslash") return esc+" ";     
+            if(esc == "\\backslash") return esc+" ";
+            if(esc == "\\textasciicircum{}") return "\\hat{\\;}";  
             return "\\text{" + esc + "}";  
         }
         return " " + this.value + " "; 
@@ -119,9 +120,14 @@ export abstract class Literal extends MNode {
             // If it is a textnode, go one level more up
             this.e = this.e.parentElement;
             if(!this.e) console.error("Must exist!");
+        } else if(util.hasElement("accent-body", this.e.className.split(" "))) {
+            // If it is an accent, go six (TODO?) level`s more up
+            // TODO: this still won't work for û,ö,á etc... Keep in mind: ^`´
+            this.e = this.e.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
+            if(!this.e) console.error("Must exist!");
         }
         const ch = this.getChildren();
-        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!",this.e.children, ch);
+        if(this.e.children.length !== ch.length) console.error("Parent must contain all glyphs!",this.e, ch);
         let i = 0;
         for(const c of ch) {
             c.rKatex(this.e.children[i++]);

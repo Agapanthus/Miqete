@@ -11,7 +11,6 @@ import * as tutil from "../dom/util";
 import { Config } from "../util/config";
 import { bringClose } from '../dom/associative';
 
-
 // TODO: It might happen that you try to select something before rebuildDummy / rekatex has been called. At this point, this would be fatal. fix it!
 
 export namespace css {
@@ -123,8 +122,8 @@ class Creator_impl extends Creator {
 
         // Accept input
         me.tabIndex = 0;
-        me.onkeydown = this.onInput;
-
+        me.onkeypress = this.onInput; // Necessary for receiving stuff like "^" and "â" (for those not using an english keyboard layout)
+        me.onkeydown = this.onInput; // Necessary for Enter, shift etc...
 
         if(!notSelectable) {
             me.innerText = "."; // TODO: Make the glyph fill exactly the whole area!
@@ -508,9 +507,35 @@ export class Cursor {
             }
         }
     }
-    
+
+
+
     private onInput = (e: KeyboardEvent): any => {
         console.log(e.key);
+        let key = e.key;
+
+        // "keydown" only receives "Dead" and an ambiguous keycode when typing "^h"
+        // Therefore, by default we need to use keypress and use keydown only for stuff like arrowkeys and enter.
+
+        if(e.type == "keydown") {
+            switch(e.key) {
+                case "Delete":
+                case "Backspace":
+                case "Enter":
+                case "ArrowRight":
+                case "ArrowLeft":
+                case "ArrowDown":
+                case "ArrowUp":
+                case "Home":
+                case "End":
+                break; // These are whitelisted
+
+                default: return; // Drop everything else
+            }
+        }
+
+
+        //////////////////////////////////////
         
         let c;
         if(this.selection) { // If the selection 
@@ -527,12 +552,6 @@ export class Cursor {
         }
 
         
-
-        
-        //let changed = null;
-        //const p = c.getParent();
-        //const nc = p ? c : this.mdom;
-
 
         /*
         What about prefix negation and stuff?
@@ -562,7 +581,7 @@ export class Cursor {
         */
 
         
-        switch(e.key) {
+        switch(key) {
            
             case "ArrowLeft":
                 if(e.shiftKey) {
@@ -614,9 +633,9 @@ export class Cursor {
             
 
             default:   
-            
+                                
 
-                if(e.key == "Delete") // TODO: Move the cursor in a smarter, more generic way
+                if(key == "Delete") // TODO: Move the cursor in a smarter, more generic way
                     this.moveCursorRight(this.cursor);
 
                 if(this.selection) {
@@ -626,7 +645,7 @@ export class Cursor {
 
                     const p = sel.getParent();
                     if(p) {
-                        if(p.input(e.key, sel, true)) {
+                        if(p.input(key, sel, true)) {
                             this.onRefresh(this.mdom);
                         } else {
                             console.warn("unhandled!");
@@ -635,7 +654,7 @@ export class Cursor {
                         alert("TODO");
                     }
                 } else {
-                    if(c.input(e.key, null, false)) {
+                    if(c.input(key, null, false)) {
                         this.onRefresh(this.mdom);
                     } else {                        
                         console.warn("unhandled!");
