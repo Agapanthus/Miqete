@@ -22,8 +22,7 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
     if((ind0 === 0) && (!operate)) {
         const p = that.getParent();
         if(p) {
-            p.input(e, that, operate);
-            return;
+            if(p.input(e, that, operate)) return true;
         }
     }
 
@@ -31,33 +30,33 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
     if(backsp) {
         const p = that.getParent();
         if(p) {
-            p.input(e, that, operate);
-            return;
+            if(p.input(e, that, operate)) return true;
         }
     }
 
+    ////////////////////
+
     if(! (e.length == 1) && util.isAsciiPrintableString(e)) {
         // Silently drop control keys
-        return;
+        return false;
     }
 
     const par = that.getParent();
     if(!par) {
         console.error("TODO: Toplevel!");
-        return;
+        return false;
     }
     const ind = par.getIndex(that);
     if(ind < 0) {
         console.error("Child not found!");
-        return;
+        return false;
     }
     const res = split.split(child, operate);    
     const inp = new InputObject(res, e, config);      
     par.setChild(inp, ind);
 
 
-    // TODO: Allow "silent" Operator, e.g. ab for a*b or 5sum(x) for 3*sum(x). Silent operator tries to apply to its children, for example it will join numbers.
-
+    return true;
 }
 
 
@@ -192,16 +191,19 @@ class InputObject extends MNode  {
         return "{" + k + "}";
     }
 
-    public input(e: string, child: MNode, operate: boolean) {
+    public input(e: string, child: MNode, operate: boolean): boolean {
         const hosted = this.getHosted();
     
         if(!operate) {
             if(child === hosted.right) {
-                this.child(0).input(e, null, operate);
+                return this.child(0).input(e, null, operate);
+               
             }
+            return false;
        
         }
         // TODO
+        return false;
     }
 
     public join() {
@@ -234,7 +236,7 @@ export class Text extends Literal {
     // \\text
     // TODO: toKatex: Latex-escape! 
 
-    public input(e: string, child: MNode, operate: boolean) {
+    public input(e: string, child: MNode, operate: boolean): boolean {
 
         console.log("input");
 
@@ -268,8 +270,10 @@ export class Text extends Literal {
                 } else console.error("Parent must be inputobject!", p);
 
             } else this.set(n);
+            return true;
                   
         }   
 
+        return false;
     }
 }

@@ -56,7 +56,7 @@ export class binaryInfixOperator extends Associative {
         assoc: string[]
     };
 
-    constructor(a: MNode, b: MNode, private katexCmd: string, private config: Config) {
+    constructor(a: MNode, b: MNode, private katexCmd: string, protected config: Config) {
         super();
 
         this.setChild(a, LCHILD);
@@ -93,10 +93,10 @@ export class binaryInfixOperator extends Associative {
         this.setChild(this.child(LCHILD).bake(), LCHILD);
         this.setChild(this.child(RCHILD).bake(), RCHILD);
         if(this.aNeedsParens()) {
-            this.setChild(new Parentheses(this.child(LCHILD), "(", ")"), LCHILD);
+            this.setChild(new Parentheses(this.child(LCHILD), "(", ")",  this.config), LCHILD);
         }
         if(this.bNeedsParens()) {
-            this.setChild(new Parentheses(this.child(RCHILD), "(", ")"), RCHILD);
+            this.setChild(new Parentheses(this.child(RCHILD), "(", ")",  this.config), RCHILD);
         }
         return this;
     }
@@ -169,10 +169,10 @@ export class binaryInfixOperator extends Associative {
 
     public toKatex() {    
         if(this.aNeedsParens()) {
-            this.setChild(new Parentheses(this.child(LCHILD), "(", ")", true), LCHILD);
+            this.setChild(new Parentheses(this.child(LCHILD), "(", ")", this.config, true), LCHILD);
         }
         if(this.bNeedsParens()) {
-            this.setChild(new Parentheses(this.child(RCHILD), "(", ")", true), RCHILD);
+            this.setChild(new Parentheses(this.child(RCHILD), "(", ")", this.config, true), RCHILD);
         }
         
         return "{"
@@ -213,58 +213,71 @@ export class binaryInfixOperator extends Associative {
         joinToSequence(this.child(LCHILD), this.child(RCHILD), this, this.config);
     }
 
-    public input(e: string, child: MNode, operate: boolean) {
-        
-    
+    private deleteChild(child: number) {
+        if(this instanceof Sequence) {
+            if(child === LCHILD) this.replace(this.child(RCHILD));
+            else this.replace(this.child(LCHILD));
+        } else {
+            this.setChild( new l.Symbol("?", this.config), child); // TODO: Better placeholder? 
+        }
+    }
 
+    public input(e: string, child: MNode, operate: boolean): boolean{
         if(!operate) {
             if(child == this.child(LCHILD)) {
-                // TODO: handle delete
-                if(false) {
+                if(e === "Delete") {
+                    // TODO: handle delete
+                    return false;
 
                 } else {
                     // Redirect from first child to parent
                     const p = this.getParent();
-                    if(p) p.input(e, this, operate);
+                    if(p) return p.input(e, this, operate);
+                    return false;
                 }
             } else if(child == this.child(OPERATOR)) {
                 if(e == "Delete") {
                     this.removeSelf();
+                    return true;
+                } else if(e == "Backspace") {
+                    if(this.child(LCHILD).input(e, null, false)) {
+                        return true;
+                    } else {
+                        this.deleteChild(LCHILD);
+                        return true;
+                    }
                 } else {
                     // Redirect everything from the operator to the first child
-                    this.child(LCHILD).input(e, null, false);
+                    return this.child(LCHILD).input(e, null, false);
                 }
 
             } else if(child == this.child(RCHILD)) {
                 // handle backspace (convert to sequence)
                 if(e == "Backspace") {
                     this.removeSelf();
+                    return true;
                 }
+                return false;
 
             } else if(child == null) {
                 // Redirect to the right child
-                this.child(RCHILD).input(e, null, false);
+                return this.child(RCHILD).input(e, null, false);
                 
             } else console.error("Unreachable", child);
         } else {
+            if(e === "Delete") {
+                this.deleteChild(this.forceGetIndex(child));
+                return true;
+            }
+
+
             // TODO
+            return false;
         }
 
 
     }
 
-    // Do you really want this behaviour? This will join stuff like {1+2}{2+3} -> {1+22+3}
-    // ----- No! We don't. Instead, try to associatively reorder everything before creating the sequence.
-    /*public tryJoin(partner: MNode) : MNode {
-        const c = this.child(RCHILD) as any;
-        if("tryJoin" in c) {
-            const r = c.tryJoin(partner);
-            if(!r) return null;
-            this.setChild(r, RCHILD);
-            return this;
-        }
-        return null;
-    }*/
 }
 
 
@@ -312,4 +325,54 @@ export class Sequence extends binaryInfixOperator {
         }
 
     } 
+
+    private tryRemove(tryReplace: number): boolean {
+        if(this.child(tryReplace)) {
+            this.replace(this.child(tryReplace))
+            return true;
+        } else {
+            // Remove self
+            return this.forceGetParent().input("Delete", this, true);
+        }  
+    }
+
+   
+    public input(e: string, child: MNode, operate: boolean): boolean{
+        if(!operate) {
+            if(child == this.child(LCHILD)) {
+                if(e === "Delete") {
+                    // TODO: handle delete
+                    return false;
+
+                } else {
+                    // Redirect from first child to parent
+                    return this.forceGetParent().input(e, this, operate);
+                }
+            } else if(child == this.child(RCHILD)) {
+                // handle backspace (convert to sequence)
+                if(e == "Backspace") {
+                    if(!this.child(LCHILD).input(e, null, false)) {
+                        return this.tryRemove(RCHILD);
+                    } else return true;
+                }
+                return false;
+
+            } else if(child == null) {
+                // Redirect to the right child
+                return this.child(RCHILD).input(e, null, false);
+                
+            } else console.error("Unreachable", child);
+        } else {
+            if(e === "Delete") {
+                if(child === this.child(LCHILD)) return this.tryRemove(RCHILD);
+                else return this.tryRemove(LCHILD);
+            }
+
+            // TODO
+            return false;
+        }
+
+
+    }
+   
 }

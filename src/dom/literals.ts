@@ -179,7 +179,7 @@ export class Integer extends Literal implements Splitable, Joinable {
 
     
 
-    public input(e: string, child: MNode, operate: boolean) {
+    public input(e: string, child: MNode, operate: boolean): boolean {
         
         const backsp = e == "Backspace"
         const del = e == "Delete"
@@ -204,12 +204,14 @@ export class Integer extends Literal implements Splitable, Joinable {
             const n = start + ins + end; // Insert new digits
 
             if(n.length <= 0) {
-                // TODO: Destroy self. But replace by what?
+                // Destroy self. Parent should understand.
+                return this.forceGetParent().input("Delete", this, true);
             } else this.setSValue(n);
 
-        } else {
-            defaultInput(e, this, child, operate, this, this.config)
-        }       
+            return true;
+        } 
+
+        return defaultInput(e, this, child, operate, this, this.config);     
     }
 
     public split(child: MNode, operate: boolean) : MNodePair {
@@ -246,7 +248,7 @@ export class Integer extends Literal implements Splitable, Joinable {
 export class Symbol extends Glyph {
     private v: string;
 
-    constructor(i: string, config: Config, isText: boolean) {
+    constructor(i: string, config: Config, isText: boolean = false) {
         super(i, isText);
         this.v = i;
     }
@@ -256,10 +258,11 @@ export class Symbol extends Glyph {
         return this.v;
     } 
 
-    public input(e: string, child: MNode, operate: boolean) {
+    public input(e: string, child: MNode, operate: boolean): boolean {
         const p = this.getParent()
         if(p) {
-            p.input(e, this, operate);
+            return p.input(e, this, operate);
         }
+        return false;
     }
 }

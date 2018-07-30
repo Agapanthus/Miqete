@@ -626,46 +626,22 @@ export class Cursor {
 
                     const p = sel.getParent();
                     if(p) {
-                       p.input(e.key, sel, true); 
+                        if(p.input(e.key, sel, true)) {
+                            this.onRefresh(this.mdom);
+                        } else {
+                            console.warn("unhandled!");
+                        }
                     } else {
                         alert("TODO");
                     }
                 } else {
-                    c.input(e.key, null, false);
-                }
-
-                
-
-                
-                this.onRefresh(this.mdom);
-                
-            /*
-                if( util.hasElement(e.key, ["*", "+", "-"])) { // Insert binary Operator
-                    const inputToCmd = {"*": "\\cdot", "+": "+", "-": "-" };
-                    
-                    //changed = new io.binaryInfixOperator(new li.Placeholder(), nc, inputToCmd[e.key], this.config);
-                }
-                else if( util.hasElement(e.key, ["("])) { // Insert Parentheses
-                     
-                }
-                else if(e.key.length === 1 && isAlphaNumeric(e.key)) {
-                    let insert = e.key;
-                    changed = new li.LeftInput(nc, insert, this.config);
-                }
-                  */  
-            
+                    if(c.input(e.key, null, false)) {
+                        this.onRefresh(this.mdom);
+                    } else {                        
+                        console.warn("unhandled!");
+                    }
+                }            
         }
-/*
-        if(changed)  {      
-            if(p) { // if the changed element has a parent, replace the element
-                const i = p.getIndex(c);
-                p.setChild(changed, i);
-                this.onRefresh(this.mdom);
-            } else { // otherwise, just change the root
-                this.mdom = changed;
-                this.onRefresh(this.mdom);
-            }
-        }*/
     };
 
     public buildDummy(mdom: MNode) {

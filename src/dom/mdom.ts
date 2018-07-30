@@ -61,7 +61,8 @@ export abstract class MNode  {
     // Something has been typed here
     // "child" is the child where this event has been triggered before (or you should think it has been), if there is no child, this should be interpreted as "after the last child".
     // operate is true, if one should apply whatever is done to that child
-    public abstract input(e: string, child: MNode, operate: boolean): void;
+    // Returns true iff the input has been processed.
+    public abstract input(e: string, child: MNode, operate: boolean): boolean;
 
     // Returns the katex-string of this element and all its children
     public abstract toKatex(): string;
@@ -130,14 +131,19 @@ export abstract class MNode  {
     }
 
    
-    public forceGetIndex() : number {
+    public forceGetIndex(child?: MNode) : number {
+        if(child) {
+            const i = this.getIndex(child);
+            if(i < 0) {
+                console.error("Something went really wrong");
+                throw "";
+            } 
+            return i;
+        }
+
         const i = this.forceGetParent().getIndex(this);
         if(i < 0) {
-            console.log(this);
-            for(const i in this.forceGetParent().children) {
-                console.log(this.forceGetParent().child(i as any), this.forceGetParent().child(i as any) === this);   
-            }
-            console.error("Something went really wrong", this.forceGetParent(), this, i);
+            console.error("Something went really wrong");
             throw "";
         }
         return i;
@@ -172,8 +178,9 @@ export abstract class MNode  {
 
 export class Empty extends MNode {
 
-    public input(e: string, child: MNode, operate: boolean): void {
+    public input(e: string, child: MNode, operate: boolean): boolean {
         console.error("empty node shouldn't receive input");
+        return true;
     }
 
     public toKatex(): string {

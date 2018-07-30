@@ -19,7 +19,7 @@ export interface Splitable {
 }
 
 // Solves circular dependencies
-export function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, split: Splitable, config: Config) {
+export function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, split: Splitable, config: Config): boolean {
 
-    (window as any).defaultInput(e, that, child, operate, split, config);
+    return (window as any).defaultInput(e, that, child, operate, split, config);
 }

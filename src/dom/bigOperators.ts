@@ -73,7 +73,7 @@ export class bigPrefixOperator extends MNode implements Selectable {
         this.setChild(this.child(2).bake(), 2);
 
         if(this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) {
-            this.setChild(new Parentheses(this.child(2), "(", ")"), 2);
+            this.setChild(new Parentheses(this.child(2), "(", ")", this.config), 2);
         }
         return this;
     }
@@ -122,7 +122,7 @@ export class bigPrefixOperator extends MNode implements Selectable {
 
     public toKatex() {
         if(this.config.semantics && this.child(2).precendence() < this.myVirtualPrec) {
-            this.setChild(new Parentheses(this.child(2), "(", ")", true), 2);
+            this.setChild(new Parentheses(this.child(2), "(", ")", this.config, true), 2);
         }
     
         return "{" + this.katexCmd
@@ -132,8 +132,9 @@ export class bigPrefixOperator extends MNode implements Selectable {
             + "}";
     }
 
-    public input(e: string, child: MNode, operate: boolean) {
+    public input(e: string, child: MNode, operate: boolean): boolean {
 
+        return false;
         // TODO
     }
 

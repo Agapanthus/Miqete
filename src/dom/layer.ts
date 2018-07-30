@@ -54,6 +54,7 @@ export class Layer extends MNode  {
 
     public input(e: string, child: MNode, operate: boolean) {
 
+        return false;
         // TODO
     }
 
