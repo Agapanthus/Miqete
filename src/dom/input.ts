@@ -22,7 +22,6 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
     if((ind0 === 0) && (!operate)) {
         const p = that.getParent();
         if(p) {
-            console.log("redirect");
             p.input(e, that, operate);
             return;
         }
@@ -32,7 +31,6 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
     if(backsp) {
         const p = that.getParent();
         if(p) {
-            console.log("redirect");
             p.input(e, that, operate);
             return;
         }

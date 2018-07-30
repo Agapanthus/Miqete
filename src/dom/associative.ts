@@ -1,7 +1,5 @@
-
 import { MNode } from "./mdom";
 import * as tutil from "./util";
-
 
 
 export abstract class Associative extends MNode {
@@ -11,7 +9,6 @@ export abstract class Associative extends MNode {
     public abstract getRight(): number;
 
     public abstract isAssociative(): boolean;
-
     
 
     // Checks if this is the leftmost child in this associative area
@@ -59,7 +56,7 @@ class AssoException extends Error {
     }
 }
 
-// If b is associative, left rotation doesn't change semantics. Don't forget to link c to b's parent!
+// If b is associative, left rotation doesn't change semantics.
 export function assoRotateLeft(b: Associative, dontcheck?: boolean): void {
     if(!dontcheck) {
         if(!b.isAssociative()) throw new AssoException("Operator is not associative");
@@ -83,7 +80,7 @@ export function assoRotateLeft(b: Associative, dontcheck?: boolean): void {
     tutil.sanityCheck(c); 
 }
 
-// If a.child(0) is associative, right rotation doesn't change semantics. Don't forget to link b to a's parent!
+// If a.child(0) is associative, right rotation doesn't change semantics. 
 export function assoRotateRight(a: Associative, dontcheck?: boolean): void {
     const aL = a.getLeft();
     if(!dontcheck) {
@@ -170,21 +167,14 @@ export function bringClose(L: MNode, R: MNode) : MNode {
             try {                
                 
                 // Rotate base rightwards and place it in the dom
-                //const newBase = 
                 assoRotateRight(common);
                 
-                //if(cp) cp.setChild(newBase, pindex);
-                //else throw "Never do this!"; //this.mdom = newBase;
-    
                 // Find the common ancestor
                 common = tutil.findCommonAncestor(L, R) as Associative;
                 if(!(common instanceof Associative)) {
                     console.error("Ancestor is no associative operator. This shouldn't happen.");
                     return;
                 }
-                //cp = common.getParent();
-                //if(cp) pindex = cp.getIndex(common);
-
             } catch(e) {
                 tutil.sanityCheck(common);
 
@@ -206,27 +196,19 @@ export function bringClose(L: MNode, R: MNode) : MNode {
             
             try {
                 // Rotate base rightwards and place it in the dom
-                //const newBase = 
                 assoRotateLeft(common);
-                //if(cp) cp.setChild(newBase, pindex);
-                //else throw "Never do this!"; //this.mdom = newBase;
-    
+                
                 // Find the common ancestor
                 common = tutil.findCommonAncestor(L, R) as Associative;
                 if(!(common instanceof Associative)) {
                     console.error("Ancestor is no associative operator. This shouldn't happen.");
                     return;
-                }
-                //cp = common.getParent();
-                //if(cp) pindex = cp.getIndex(common);
-                
+                }                
             } catch(e) {
                 if(!(e instanceof AssoException)) throw e; // rethrow
                 break; // Non-asso operator
             }
         }
-        
     }
-
     return common;
 }

@@ -304,28 +304,7 @@ export class Sequence extends binaryInfixOperator {
         super(a,b,"", config);
     }
 
-    /*
-    // tryJoin must first use associative law to bring partners as close to each other as possible! 
-    private rotate(left: MNode, right: MNode) {
-        tutil.mPrint(left);
-
-        if(left instanceof binaryInfixOperator) {
-            try {
-                while(true) assoRotateLeft(left);
-            } catch(e) {}
-        }
-
-        if(right instanceof binaryInfixOperator) {
-            try {
-                while(true) assoRotateRight(right);
-            } catch(e) {}
-        }
-    }*/
-
-
     public tryJoinThem() {
-        //this.rotate(this.child(0), this.child(1)); // TODO: To join {1+2}+{3+4} -> {1+23+4} you need to this associative-stuff before creating the sequence...
-
         const c = this.child(0) as any;
         if("tryJoin" in c) {
             const r = c.tryJoin(this.child(1));
