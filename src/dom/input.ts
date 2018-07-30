@@ -5,7 +5,7 @@ import * as util from "../util/util";
 import * as tutil from "./util";
 import { Config } from "../util/config";
 import { MNodePair, Splitable } from "./inputImporter";
-import { Sequence } from "./sequence";
+import { Sequence, joinToSequence } from "./infixOperators";
 
 export function init() {
     (window as any).defaultInput = defaultInput;
@@ -208,15 +208,15 @@ class InputObject extends MNode  {
 
     public join() {
         if( (!this.left) || (!this.right)) {
-            const p = this.forceGetParent();
-            p.replace(this, this.child(1));
+            this.replace(this.child(1));
         } else if((!this.left) && (!this.right)) {
             // TODO: What?!
         } else {
-            const p = this.forceGetParent();
-            const seq = new Sequence(this.child(1), this.child(2), this.config);
-            p.replace(this, seq);
-            seq.tryJoin();
+            joinToSequence(this.child(1), this.child(2), this, this.config);
+            
+            /*const seq = new Sequence(this.child(1), this.child(2), this.config);
+            this.replace(seq);
+            seq.tryJoinThem();*/
         }
 
     }

@@ -95,14 +95,17 @@ export abstract class MNode  {
         return this.parent;
     }
     public forceGetParent(): MNode {
-        if(!this.parent) {
-            console.error("You must not call this on singular or root Nodes!"); // TODO: Handle error 
-        }
+        if(!this.parent) throw "You must not call this on singular or root Nodes!"; // TODO: Handle error 
         return this.parent;
     }
     public setChild(child: MNode, index: number) {
+        if(this === child) throw "no circles please!";
+        const test = this.getIndex(child);
+        if(test >= 0 && test != index) throw "You already have that child!";
+        if(!(index >= 0)) throw "Natural numbers please!";
+
         if(this.children.length < index) {
-            throw "Invalid index";
+            throw "Invalid index: "+index;
         } else if(this.children.length === index) {
             this.children.push(child);
         } else {
@@ -119,25 +122,39 @@ export abstract class MNode  {
    
     public getIndex(child: MNode) : number {
         for(const i in this.children) {
-            if(this.child(parseInt(i)) === child) {
+            if(this.child(i as any) === child) {
                 return parseInt(i);
             }
         }
         return -1;
     }
 
-    public replace(child: MNode, by: MNode) {
-        const ind = this.getIndex(child);
-        if(ind < 0) console.error("That element must be a direct child!"); // TODO: Handle error
-        this.setChild(by, ind);
+   
+    public forceGetIndex() : number {
+        const i = this.forceGetParent().getIndex(this);
+        if(i < 0) {
+            console.log(this);
+            for(const i in this.forceGetParent().children) {
+                console.log(this.forceGetParent().child(i as any), this.forceGetParent().child(i as any) === this);   
+            }
+            console.error("Something went really wrong", this.forceGetParent(), this, i);
+            throw "";
+        }
+        return i;
+    }
+
+    public replace(by: MNode) {
+        const ind = this.forceGetIndex();
+        this.forceGetParent().setChild(by, ind);
     }
    
     public child(index: number) : MNode {
-        if(!this.children[index]) throw "invalid index!";
+        if(index < 0 || index >= this.children.length) throw "invalid index!";
         return this.children[index];
     }
     public setParent__INTERNAL(parent: MNode): void {
         this.parent = parent;
+        if(this === parent) throw "no circles please!";
     }
 
     // This useful to automatically adding parenthesis, e.g. "(a+b)*c" when having "Mul Add a b c"
@@ -176,6 +193,31 @@ export class Empty extends MNode {
     public precendence() { return maxPrec; }
 
 }
+
+
+
+export interface Joinable {
+    // try joining with the right neighbour
+    // return null (not possible) or the resulting joined MNode
+    tryJoin(rightPartner: MNode) : MNode;
+}
+
+
+
+/*
+export interface Atom {
+    isAtom: any;
+}
+
+// returns true iff the Node is visually atomic (there is - except from advanced notation - no need for parentheses around it)
+// (which means: the element is explicitely marked atomic or has at most one child AND has maximum precedence)
+export function isAtom(c: MNode) : boolean {
+    if((c as any).isAtom) return true;
+    const ch = c.getChildren();
+    console.log(ch);
+    return c.precendence() === maxPrec && ch.length <= 1;
+}
+*/
 
 
 export const maxPrec = 1000000;

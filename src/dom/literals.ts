@@ -1,11 +1,10 @@
 
-import { Vector, MNode, maxPrec, Creator, Selectable} from "./mdom";
+import { Vector, MNode, maxPrec, Creator, Selectable, Joinable } from "./mdom";
 
 import * as tutil from "./util";
 import * as util from "../util/util";
 import { Config } from "../util/config";
 import { defaultInput, MNodePair, Splitable } from "./inputImporter";
-import { Joinable } from "./sequence";
 
 
 

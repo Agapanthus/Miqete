@@ -3,18 +3,13 @@ import {style, keyframes, types, media } from 'typestyle';
 
 
 import { Creator, MNode, Vector, Selectable } from "../dom/mdom";
-import {  findCommonAncestor, mMap, findChild, mPrint } from "../dom/util";
+import {  mMap, findChild, mPrint } from "../dom/util";
 
 import * as util from "../util/util";
-import { assoRotateLeft, binaryInfixOperator, assoRotateRight } from '../dom/infixOperators';
 
-import * as pa from "../dom/parentheses";
-import * as io from "../dom/infixOperators";
-import * as bo from "../dom/bigOperators";
-import { Layer } from "../dom/Layer";
-import * as li from "../dom/input";
 import * as tutil from "../dom/util";
 import { Config } from "../util/config";
+import { bringClose } from '../dom/associative';
 
 
 // TODO: It might happen that you try to select something before rebuildDummy / rekatex has been called. At this point, this would be fatal. fix it!
@@ -407,26 +402,6 @@ export class Cursor {
     };
 
 
-    // BIO? yes        yes   no    yes   no    no
-    //      common --- a --- b --- c --- d --- child
-    //                       A
-    //         returns this -|
-    static getChildBelowTopmostContinuedSeriesOfOperators = (common: MNode, child: MNode) =>  {
-        let head = child;
-        let temp = child;
-        let lastWasBIO = false;
-        while(temp != common) {
-            if(temp.getParent() instanceof binaryInfixOperator) {
-                if(!lastWasBIO) head = temp;
-                lastWasBIO = true;
-            } else {
-                lastWasBIO = false;
-            }
-            temp = temp.getParent();
-        }
-        return head;
-    };
-        
   
 
     private select(e: MNode) {
@@ -513,79 +488,10 @@ export class Cursor {
             return null;
         }
 
-        let common = findCommonAncestor(L, R);
-        if(!common) {
-            console.error("no ancestor found!");
-            return;
-        }
-
         // Minimize selection using associativity law
         // -> We can only select a subtree. But in 1+2+3 we can theoretically select 2+3 (which is might be not a subtree).
         //    Therefore, we need to rotate until this is a subtree
-        if(common instanceof binaryInfixOperator) {
-            let pindex = null;
-            let cp = common.getParent();
-            if(cp) pindex = cp.getIndex(common);
-
-            let lHead = Cursor.getChildBelowTopmostContinuedSeriesOfOperators(common, L);
-            let rHead = Cursor.getChildBelowTopmostContinuedSeriesOfOperators(common, R);
-
-
-            while(true) {
-                // If child is leftmost of the common ancestor - done!
-                if(common.isLeftmostChild(lHead)) {
-                    // Continue rotating, if we are in the root and the left uninteresting branch has still operators
-                    if(lHead === common && (common.child(0) instanceof binaryInfixOperator)) {
-                        // dont break
-                    } else break;
-                }
-
-                try {                
-                    // Rotate base rightwards and place it in the dom
-                    const newBase = assoRotateRight(common);
-                    if(cp) cp.setChild(newBase, pindex);
-                    else this.mdom = newBase;
-        
-                    // Find the common ancestor
-                    common = findCommonAncestor(L, R) as binaryInfixOperator;
-                    if(!(common instanceof binaryInfixOperator)) throw "Ancestor is no infix operator. This shouldn't happen.";
-                    cp = common.getParent();
-                    if(cp) pindex = cp.getIndex(common);
-
-                } catch(e) {
-                    break; // Non-asso operator
-                }
-            }
-            
-           
-            while(true) {
-                // If child is leftmost of the common ancestor - done!
-                if(common.isRightmostChild(rHead)) {
-                    // Continue rotating, if we are in the root and the right uninteresting branch has still operators
-                    if(rHead === common && (common.child(1) instanceof binaryInfixOperator)) {
-                        // dont break
-                    } else break;
-                }
-                
-                try {
-                    // Rotate base rightwards and place it in the dom
-                    const newBase = assoRotateLeft(common);
-                    if(cp) cp.setChild(newBase, pindex);
-                    else this.mdom = newBase;
-        
-                    // Find the common ancestor
-                    common = findCommonAncestor(L, R) as binaryInfixOperator;
-                    if(!(common instanceof binaryInfixOperator)) throw "Ancestor is no infix operator. This shouldn't happen.";
-                    cp = common.getParent();
-                    if(cp) pindex = cp.getIndex(common);
-                    
-                } catch(e) {
-                    break; // Non-asso operator
-                }
-            }
-            
-        }
-
+        const common = bringClose(L, R);
         
         this.select(common);
 

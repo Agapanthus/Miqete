@@ -42,13 +42,60 @@ export function mMap(a: MNode, fun: (a: MNode) => MNode): MNode {
     if(!a) console.error("must be non-null")
     const t = fun(a);
     for(let i in a.getChildren()) {
-        a.setChild(mMap(a.child(parseInt(i)), fun), parseInt(i));
+        a.setChild(mMap(a.child(i as any), fun), parseInt(i));
     }
     return t;
 }
 
+ // SLOW! For debugging: Searches for wrong parent-child relations and checks that every node appears only once!
+export function sanityCheck(a: MNode, maybeRoot?: boolean) : void {
+    if(!maybeRoot && !a.getParent()) console.warn("Are you sure that this should be the root?", a, mPrint(a));
 
-export function mPrint(a: MNode, indent?: number): void {
+    // Does every child has it's parent set as it's parent?
+    checkParent(a, a.getParent());
+
+    // Does every node appear only once?
+    mMap(a, b => {
+        for(const c of b.getChildren()) {
+            mMap(c, d => {
+                if(d === b) {
+                    console.error(c,b);
+                    console.error(mPrint(c), mPrint(b));
+                    throw "This node is referenced multiple times!";
+                }
+                return d;
+            });
+        }
+        return b;
+    });
+
+    // Continue to check parents
+    if(a.getParent()) sanityCheck(a.getParent(), true);
+}
+
+function checkParent(a: MNode, parent: MNode) {
+    if(a.getParent() === a) {
+        console.error("Is it's own parent:", a);
+        throw "Wrong parent!";
+    }
+    if(parent) {
+        if(a.getParent() !== parent) {
+            console.error("Has a wrong parent:", a, "parent: ", parent);
+            throw "Wrong parent!";
+        }
+        if(parent.getIndex(a) < 0) {
+            console.error("Is not it's parent's child:", a, "parent: ", parent);
+            throw "Wrong parent!";
+        }
+    }
+    
+    for(const b of a.getChildren()) {
+        checkParent(b, a);
+    }
+}
+
+
+export function mPrint(a: MNode, indent?: number): string {
     let indenta = "";
     if(!indent) indent = 0;
     for(let i=0; i<indent; i++) indenta += "  ";
@@ -57,11 +104,13 @@ export function mPrint(a: MNode, indent?: number): void {
         info += a.getSValue();
     }
 
-    console.log(indenta + (a.constructor as any).name + info);
+    let str = indenta + (a.constructor as any).name + info + "\n";
    
     for(const c of a.getChildren()) {
-        mPrint(c, indent+1);
+        str += mPrint(c, indent+1);
     }
+
+    return str;
 }
 
 export function getVisualIndex(a: MNode, parent: Element): number {

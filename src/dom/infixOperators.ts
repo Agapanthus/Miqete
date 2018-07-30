@@ -1,9 +1,11 @@
 
-import { MNode, Vector, Creator, Selectable, maxPrec, Empty } from "./mdom";
+import { MNode, Vector, Creator, Selectable, maxPrec, Empty, Joinable } from "./mdom";
 import * as tutil from "./util";
 import * as l from "./literals";
 import { Config } from "../util/config";
 import { Parentheses } from "./parentheses";
+import { Associative, bringClose } from "./associative";
+
 
 
 const LCHILD = 0;
@@ -39,55 +41,8 @@ const infixOperators = {
 
 }
 
-// If b is associative, left rotation doesn't change semantics. Don't forget to link c to b's parent!
-export function assoRotateLeft(b: binaryInfixOperator, dontcheck?: boolean): binaryInfixOperator {
-    if(!dontcheck) {
-        if(!b.isAssociative()) throw "Operator is not associative";
-    }
-    //      b           c
-    //     / \         / \
-    //    a   c  ->   b   e
-    //       / \     / \ 
-    //      d   e   a   d
 
-    const c = b.child(1) as binaryInfixOperator;
-    const d = c.child(0);
-
-    c.setChild(b, 0);
-    b.setChild(d, 1);
-
-    return c;
-}
-
-// If a.child(0) is associative, right rotation doesn't change semantics. Don't forget to link b to a's parent!
-export function assoRotateRight(a: binaryInfixOperator, dontcheck?: boolean): binaryInfixOperator {
-    if(!dontcheck) {
-        if(! (a.child(0) instanceof binaryInfixOperator)) throw "b must be an Operator";
-    }
-
-    //      a           b
-    //     / \         / \
-    //    b   c  ->   e   a
-    //   / \             / \
-    //  e   f           f   c
-
-    const b = a.child(0) as binaryInfixOperator;
-    const f = b.child(1);
-    
-    b.setChild(a, 1);
-    a.setChild(f, 0);
-
-    if(!dontcheck) {
-        if(!b.isAssociative()) {
-            assoRotateLeft(b, true); // Revert changes
-            throw "Operator is not associative";
-        }
-    }
-
-    return b;
-}
-
-export class binaryInfixOperator extends MNode {
+export class binaryInfixOperator extends Associative {
        
     private prec: number;
     public precendence(): number {
@@ -113,6 +68,13 @@ export class binaryInfixOperator extends MNode {
         this.mySymbol = infixOperators[katexCmd];
         if(!this.mySymbol) console.error("Unknown symbol " + katexCmd);
         this.prec = this.mySymbol.prec;
+    }
+
+    public getLeft(): number  {
+        return LCHILD;
+    }
+    public getRight(): number  {
+        return RCHILD;
     }
     
     public createSelectionAreas(c: Creator): void {
@@ -188,11 +150,16 @@ export class binaryInfixOperator extends MNode {
         this.child(RCHILD).sync(br);
     }
 
+
     private bNeedsParens() {
         if(!this.config.semantics) return false;
         const res = (this.child(RCHILD).precendence() < this.precendence()) 
                     // Beware: when the operator is not associative, you  
-                    || ((this.child(RCHILD).precendence() === this.precendence()) && !this.isAssociative())
+                    || ((this.child(RCHILD).precendence() === this.precendence()) 
+                        && !this.isAssociative() 
+                        && !(this.child(LCHILD) instanceof Parentheses)
+                        && !(this.child(RCHILD) instanceof Parentheses)
+                    )
         return res;
     }
     private aNeedsParens() {
@@ -235,8 +202,6 @@ export class binaryInfixOperator extends MNode {
 
     public isAssociative(): boolean {
         if(!this.config.semantics) return true;
-        if(this.child(RCHILD) instanceof Parentheses) return true;
-
         if(this.child(RCHILD) instanceof binaryInfixOperator) {
             return this.isRightAssociative(this.child(RCHILD));
         } 
@@ -244,26 +209,8 @@ export class binaryInfixOperator extends MNode {
     }
 
     
-
-
-    // Checks if this is the leftmost child in this BIO-area
-    public isLeftmostChild(a: MNode): boolean {
-        if(this === a) return true;
-        const c = this.child(LCHILD);
-        if(c === a) return true;
-        if(c instanceof binaryInfixOperator) {
-            return c.isLeftmostChild(a);
-        } else return false;
-    }
-
-    // Checks if this is the rightmost child in this BIO-area
-    public isRightmostChild(a: MNode): boolean {
-        if(this === a) return true;
-        const c = this.child(RCHILD);
-        if(c === a) return true;
-        if(c instanceof binaryInfixOperator) {
-            return c.isRightmostChild(a);
-        } else return false;
+    private removeSelf() {
+        joinToSequence(this.child(LCHILD), this.child(RCHILD), this, this.config);
     }
 
     public input(e: string, child: MNode, operate: boolean) {
@@ -273,22 +220,29 @@ export class binaryInfixOperator extends MNode {
         if(!operate) {
             if(child == this.child(LCHILD)) {
                 // TODO: handle delete
+                if(false) {
 
-                // Redirect from first child to parent
-                const p = this.getParent();
-                if(p) p.input(e, this, operate);
-
+                } else {
+                    // Redirect from first child to parent
+                    const p = this.getParent();
+                    if(p) p.input(e, this, operate);
+                }
             } else if(child == this.child(OPERATOR)) {
-                // Redirect everything from the operator to the first child
-                console.log("left");
-                this.child(LCHILD).input(e, null, false);
+                if(e == "Delete") {
+                    this.removeSelf();
+                } else {
+                    // Redirect everything from the operator to the first child
+                    this.child(LCHILD).input(e, null, false);
+                }
 
             } else if(child == this.child(RCHILD)) {
-                // TODO: handle backspace
+                // handle backspace (convert to sequence)
+                if(e == "Backspace") {
+                    this.removeSelf();
+                }
 
             } else if(child == null) {
                 // Redirect to the right child
-                console.log("right");
                 this.child(RCHILD).input(e, null, false);
                 
             } else console.error("Unreachable", child);
@@ -298,5 +252,85 @@ export class binaryInfixOperator extends MNode {
 
 
     }
+
+    // Do you really want this behaviour? This will join stuff like {1+2}{2+3} -> {1+22+3}
+    // ----- No! We don't. Instead, try to associatively reorder everything before creating the sequence.
+    /*public tryJoin(partner: MNode) : MNode {
+        const c = this.child(RCHILD) as any;
+        if("tryJoin" in c) {
+            const r = c.tryJoin(partner);
+            if(!r) return null;
+            this.setChild(r, RCHILD);
+            return this;
+        }
+        return null;
+    }*/
 }
 
+
+        
+
+////////////////////////////////////////////////////////////////////
+
+
+// Will do a "smart" tryjoin using associativity and replace "predecessor" with the resulting tree
+export function joinToSequence(left: MNode, right: MNode, predecessor: MNode, config: Config) {
+  
+    if(left.forceGetParent() === right.forceGetParent()) {
+        const p = left.forceGetParent();
+        if(p instanceof Associative) {
+            if(left instanceof Associative) left = left.getRightMost();
+            if(right instanceof Associative) right = right.getLeftMost();
+            const c = bringClose(left,right);
+            
+            if(c instanceof Associative) {
+                left = c.child(c.getLeft());
+                right = c.child(c.getRight());
+                predecessor = c;
+            } else console.error("FATAL: Their common ancestor MUST be associative!"); // This should never happen
+        }
+    } else console.warn("joining children of different branches. This might be quite not what you want.");
+
+    tutil.sanityCheck(predecessor);
+    const seq = new Sequence(left, right, config);
+    predecessor.replace(seq);
+    seq.tryJoinThem();
+}
+
+
+export class Sequence extends binaryInfixOperator {
+
+    constructor(a: MNode, b: MNode, config: Config) {
+        super(a,b,"", config);
+    }
+
+    /*
+    // tryJoin must first use associative law to bring partners as close to each other as possible! 
+    private rotate(left: MNode, right: MNode) {
+        tutil.mPrint(left);
+
+        if(left instanceof binaryInfixOperator) {
+            try {
+                while(true) assoRotateLeft(left);
+            } catch(e) {}
+        }
+
+        if(right instanceof binaryInfixOperator) {
+            try {
+                while(true) assoRotateRight(right);
+            } catch(e) {}
+        }
+    }*/
+
+
+    public tryJoinThem() {
+        //this.rotate(this.child(0), this.child(1)); // TODO: To join {1+2}+{3+4} -> {1+23+4} you need to this associative-stuff before creating the sequence...
+
+        const c = this.child(0) as any;
+        if("tryJoin" in c) {
+            const r = c.tryJoin(this.child(1));
+            if(r) this.replace(r);
+        }
+
+    } 
+}

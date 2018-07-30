@@ -64,7 +64,7 @@ class Brace extends MNode implements Selectable {
 }
 
 export class Parentheses extends MNode {
-    
+
     public precendence(): number {
         return maxPrec;
     }
