@@ -48,18 +48,10 @@ export abstract class Associative extends MNode {
     }
 }
 
-// https://stackoverflow.com/a/41429145/6144727
-class AssoException extends Error {
-    constructor(a: string) {
-        super(a);
-        (Object as any).setPrototypeOf(this, AssoException.prototype);
-    }
-}
-
 // If b is associative, left rotation doesn't change semantics.
-export function assoRotateLeft(b: Associative, dontcheck?: boolean): void {
+export function assoRotateLeft(b: Associative, dontcheck?: boolean): boolean {
     if(!dontcheck) {
-        if(!b.isAssociative()) throw new AssoException("Operator is not associative");
+        if(!b.isAssociative()) return false;
     }
     //      b           c
     //     / \         / \
@@ -78,13 +70,14 @@ export function assoRotateLeft(b: Associative, dontcheck?: boolean): void {
     
     tutil.sanityCheck(b);
     tutil.sanityCheck(c); 
+    return true;
 }
 
 // If a.child(0) is associative, right rotation doesn't change semantics. 
-export function assoRotateRight(a: Associative, dontcheck?: boolean): void {
+export function assoRotateRight(a: Associative, dontcheck?: boolean): boolean {
     const aL = a.getLeft();
     if(!dontcheck) {
-        if(! (a.child(aL) instanceof Associative)) throw new AssoException("b must be an Operator");
+        if(! (a.child(aL) instanceof Associative)) return false;
     }
 
     //      a           b
@@ -104,12 +97,13 @@ export function assoRotateRight(a: Associative, dontcheck?: boolean): void {
     if(!dontcheck) {
         if(!b.isAssociative()) {
             assoRotateLeft(b, true); // Revert changes
-            throw new AssoException("Operator is not associative");
+            return false;
         }
     }
     
     tutil.sanityCheck(b);
     tutil.sanityCheck(a);
+    return true;
 }
 
 
@@ -164,24 +158,13 @@ export function bringClose(L: MNode, R: MNode) : MNode {
                 } else break;
             }
 
-            try {                
-                
-                // Rotate base rightwards and place it in the dom
-                assoRotateRight(common);
-                
-                // Find the common ancestor
-                common = tutil.findCommonAncestor(L, R) as Associative;
-                if(!(common instanceof Associative)) {
-                    console.error("Ancestor is no associative operator. This shouldn't happen.");
-                    return;
-                }
-            } catch(e) {
-                tutil.sanityCheck(common);
-
-                if(!(e instanceof AssoException)) throw e; // rethrow
-                break; // Non-asso operator
-            }
-
+        
+            // Rotate base rightwards and place it in the dom
+            if(!assoRotateRight(common)) break;
+            
+            // Find the common ancestor
+            common = tutil.findCommonAncestor(L, R) as Associative;
+            if(!(common instanceof Associative)) throw "Ancestor is no associative operator. This shouldn't happen.";
         }
         
         
@@ -194,20 +177,12 @@ export function bringClose(L: MNode, R: MNode) : MNode {
                 } else break;
             }
             
-            try {
-                // Rotate base rightwards and place it in the dom
-                assoRotateLeft(common);
-                
-                // Find the common ancestor
-                common = tutil.findCommonAncestor(L, R) as Associative;
-                if(!(common instanceof Associative)) {
-                    console.error("Ancestor is no associative operator. This shouldn't happen.");
-                    return;
-                }                
-            } catch(e) {
-                if(!(e instanceof AssoException)) throw e; // rethrow
-                break; // Non-asso operator
-            }
+            // Rotate base rightwards and place it in the dom
+            if(!assoRotateLeft(common)) break;
+            
+            // Find the common ancestor
+            common = tutil.findCommonAncestor(L, R) as Associative;
+            if(!(common instanceof Associative)) throw "Ancestor is no associative operator. This shouldn't happen.";
         }
     }
     return common;

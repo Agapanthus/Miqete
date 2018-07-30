@@ -194,30 +194,11 @@ export class Empty extends MNode {
 
 }
 
-
-
 export interface Joinable {
     // try joining with the right neighbour
     // return null (not possible) or the resulting joined MNode
     tryJoin(rightPartner: MNode) : MNode;
 }
-
-
-
-/*
-export interface Atom {
-    isAtom: any;
-}
-
-// returns true iff the Node is visually atomic (there is - except from advanced notation - no need for parentheses around it)
-// (which means: the element is explicitely marked atomic or has at most one child AND has maximum precedence)
-export function isAtom(c: MNode) : boolean {
-    if((c as any).isAtom) return true;
-    const ch = c.getChildren();
-    console.log(ch);
-    return c.precendence() === maxPrec && ch.length <= 1;
-}
-*/
 
 
 export const maxPrec = 1000000;
