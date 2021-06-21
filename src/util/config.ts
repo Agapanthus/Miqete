@@ -3,7 +3,7 @@ import { binaryInfixOperator } from "../dom/infixOperators";
 import { Integer } from "../dom/literals";
 import { bigPrefixOperator } from "../dom/bigOperators";
 
-import { Creator, MNode, Vector, Selectable } from "../dom/mdom";
+import { Creator, MNode, Vector, Selectable, Finishable } from "../dom/mdom";
 
 import * as util from "../util/util";
 
@@ -14,13 +14,16 @@ export interface Config {
     breakOutSupSub: string[], // These katex-commands end the sub sup. TODO: impelemt 
     //latexStyle: boolean, // If true, all commands need to start with \ TODO: implement
     multiCharacterVariables: boolean, // If true, "fo" will be rendered by default as "fo" instead of "f o"  TODO: implement
+    directNumbers: boolean, // Will directly input numbers as numbers. Commands must not contain numbers.
+
+    currentInput: Finishable, // This is the focused input Element. Use "null" if you didn't create one.
 
     symbols: string, // A command ends with space, enter, focus lost or when changing between alpha-numeric and symbols. A character is a symbol iff it is in this list
     commandsIO: object, // These commands are used for infixOperators (and relations)
     commandsBO: object, // These commands are used for bigOperators
     commandsSym: object, // These commands are used for symbols
     commandsPar: object, // These commands are used for Parentheses
-    commandsFon: object, // These commands are used for Fonts
+    commandsFon: object, // These commands are used for Fonts (and similar formatting-stuff)
 }
 
 

@@ -37,32 +37,42 @@ const buildGUI: () => void = () => {
     restrictMismatchedBrackets: false,
     breakOutSupSub: ["+", "-", "=", "<", ">", "\\frac"],
     multiCharacterVariables: false,
+    directNumbers: true,
+    currentInput: null,
 
     symbols: "\\\"/!§$%&/()[]{}=,.-;:_+*#'^°<>|", // TODO: direct unicode inputs (Ctrl+v)
     commandsIO: {
 
       // Symbol Infix stuff, TODO: http://asciimath.org/
       "+": "+",
-      "*": "*",
+      "*": "\\cdot",
       "-": "-",
       "/": "\\frac",
       "+-":"\\pm",
       "-+": "\\mp",
-      "=>": "\\geq", 
+      ">=": "\\geq", 
+      "=>": "\\implies",
       "==>": "\\implies",
       "<=>": "\\iff",
       "<=": "\\leq", 
       "<==": "\\impliedby",
       // "<-" is used as in 4 < -x
       "<--": "\\leftarrow",
+      "->": "\\rightarrow",
       "-->": "\\rightarrow",
       "<---": "\\longleftarrow",
       "--->": "\\longrightarrow",
+
       // TODO: uparrow, downarrow?
+      "up": "\\uparrow",
+      "down": "\\downarrow",
+
+      "=": "=",
       ":=": "\\coloneqq",
       "|=": "\\models",
       "==": "\\equiv",
       "/=": "\\ne",
+      "=/=": "\\ne",
       "!=": "\\ne",
       "\\": "\\backslash",
       //"|": "\\vert",

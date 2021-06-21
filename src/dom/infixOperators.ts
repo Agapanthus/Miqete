@@ -32,7 +32,12 @@ const infixOperators = {
         html: "",
         prec: maxPrec,
         assoc: [""]
-    }
+    },
+    "=": {
+        html: "=", 
+        prec: 10,
+        assoc: ["="] 
+    },
     /*"/": {
         html: "/", 
         prec: 30,
@@ -58,6 +63,10 @@ export class binaryInfixOperator extends Associative {
 
     constructor(a: MNode, b: MNode, private katexCmd: string, protected config: Config) {
         super();
+
+        if(!a) a = new l.Symbol("?", this.config); // TODO: Better placeholder? Implement "optional prefix/postfix" operator
+        if(!b) b = new l.Symbol("?", this.config);
+
 
         this.setChild(a, LCHILD);
         this.setChild(b, RCHILD);

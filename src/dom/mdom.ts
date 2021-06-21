@@ -9,6 +9,11 @@ export class Vector {
 }
 
 
+export interface Finishable {
+    finish: ()=>void;
+}
+
+
 export class Selectable {
     
     // The native Element associated with this node

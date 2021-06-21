@@ -1,11 +1,13 @@
 
-import { MNode, Vector, Creator, maxPrec } from "./mdom";
-import { Literal } from "./literals";
+import { MNode, Vector, Creator, maxPrec, Finishable } from "./mdom";
+import { Literal, Symbol } from "./literals";
 import * as util from "../util/util";
 import * as tutil from "./util";
 import { Config } from "../util/config";
 import { MNodePair, Splitable } from "./inputImporter";
-import { Sequence, joinToSequence } from "./infixOperators";
+import { Sequence, joinToSequence, binaryInfixOperator } from "./infixOperators";
+import { createInflateRaw } from "zlib";
+import { Associative } from "./associative";
 
 export function init() {
     (window as any).defaultInput = defaultInput;
@@ -52,7 +54,7 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
         return false;
     }
     const res = split.split(child, operate);    
-    const inp = new InputObject(res, e, config);      
+    const inp = new InputObject(res, e, config);      // TODO: {1+1+1|} *2 should become {1+1+1*2} not {1+1+1}*2
     par.setChild(inp, ind);
 
 
@@ -60,7 +62,7 @@ function defaultInput(e: string, that: MNode, child: MNode, operate: boolean, sp
 }
 
 
-class InputObject extends MNode  {
+class InputObject extends MNode implements Finishable {
        
 
     //private hosted: MNodePair;
@@ -77,6 +79,14 @@ class InputObject extends MNode  {
     constructor(children: MNodePair, initialInput: string, private config: Config) {
         super();
 
+        console.log(config.currentInput);
+
+        if(config.currentInput) {
+            console.error("FATAL: Multiple inputs! You must finish the previous input first!")
+            //config.currentInput.finish();
+        }
+        config.currentInput = this;
+
         const hosted = children;
         this.left = hosted.left ? true : false;
         this.right = hosted.right ? true : false;
@@ -84,7 +94,7 @@ class InputObject extends MNode  {
         if(initialInput.length !== 1) console.error("Input needs an 1-char-input!", initialInput);
         if(!util.isAsciiPrintableString(initialInput)) console.error("Input needs an printable input!", initialInput);
 
-        const field = new Text(initialInput, config);
+        const field = new Text(initialInput, config, this);
         this.setChild(field, 0);
 
         let i = 1;
@@ -191,6 +201,92 @@ class InputObject extends MNode  {
         return "{" + k + "}";
     }
 
+    
+    public finish() {
+        this.config.currentInput = null;
+
+        const hosted = this.getHosted(); 
+        const v = (this.child(0) as Literal).getSValue();
+        let g: string = undefined;
+        console.log("Inserting ", v);
+        
+        if(g = this.config.commandsBO[v]) {
+            console.log("as big operator ", g);
+
+
+            // TODO
+        }
+        else if(g = this.config.commandsFon[v]) {
+            console.log("as format ", g);
+
+
+            // TODO
+        }
+        else if(g = this.config.commandsIO[v]) {
+            console.log("as infix operator ", g);
+            const io = new binaryInfixOperator(hosted.left, hosted.right, g, this.config);
+
+            if(this.left && this.right) {
+                this.replace(io);
+                return;
+            } else if(this.left || this.right) {
+                let current = this.left ? hosted.left : hosted.right;
+                this.replace(current);
+                const iop = io.precendence();
+                let p: MNode = undefined;
+
+                // Walk upwards, so we have  3*3| -> 3*3+?  instead of  3*3| -> 3*(3+?)
+                while(iop < current.precendence() 
+                        && (p = current.getParent())
+                        && (p instanceof Associative)
+                        && (p.child(this.left ? p.getRight() : p.getLeft()) == current) ) {
+                    current = current.getParent();
+                }
+               
+                current.replace(io);
+                io.setChild(current, this.left ? io.getLeft() : io.getRight());
+                console.log("done!", current, io);
+
+            } else {
+                // TODO
+            }
+        }
+        else if(g = this.config.commandsPar[v]) {
+            console.log("as parens ", g);
+            
+
+            // TODO
+        }
+        else if(g = this.config.commandsSym[v]) {
+            console.log("as symbol ", g);
+            const hosted = this.getHosted();
+            const s = new Symbol(g, this.config, false);
+            if(this.left && this.right) {
+                this.replace(
+                    new Sequence(
+                                new Sequence(hosted.left, 
+                                            s, 
+                                            this.config), 
+                                hosted.right, 
+                                this.config)
+                );
+            } else if(this.left) {
+                this.replace(new Sequence(hosted.left, s, this.config));                
+            } else if(this.right) {
+                this.replace(new Sequence(s, hosted.right, this.config));    
+            } else {
+                this.replace(s);
+            }
+        }
+        else {
+            g = v;
+            console.log("as text ", g);
+
+            // TODO
+        }
+    }
+
+
     public input(e: string, child: MNode, operate: boolean): boolean {
         const hosted = this.getHosted();
     
@@ -226,19 +322,67 @@ class InputObject extends MNode  {
 
 export class Text extends Literal {
     
-    constructor(str: string, config: Config) {
+    constructor(str: string, protected config: Config, private finish: Finishable) {
         super(str, config, true);
     }
+
 
     public set(str: string) {
         this.setSValue(str);
     }
-    // \\text
-    // TODO: toKatex: Latex-escape! 
+    
+    private prefinish(e: string, child: MNode, operate: boolean) {
+        // TODO: When typing "a|bc" -> "a1|bc" you need to split it and finish "a" and "bc" separately!
+
+        if(child === null) {
+            // TODO: How can I redirect e?
+            this.finish.finish();
+        } else {
+            console.warn("TODO: Impl!");
+        }
+
+    }
 
     public input(e: string, child: MNode, operate: boolean): boolean {
 
-        console.log("input");
+
+        ////////////////////////////
+        // There are three modes: number, symbol, text.
+        // Switching between them will cause "finish"
+
+        if(e.length === 1) {
+
+            switch(e) {
+                case " ":
+                case "Enter":
+                this.prefinish(e, child, operate);
+                return true;
+            }
+
+            // Is a number
+            const isNumber = util.isNumeric(this.getSValue());
+            const isENumber = e.length === 1 && util.isNumeric(e);
+
+            if(isNumber != isENumber) {
+                this.prefinish(e, child, operate);
+                return true;
+            }
+            
+            if(!isNumber) {
+
+                // If it has symbols, it is completely made of symbols
+                const hasSymbols = util.intersect(this.config.symbols.split(''), this.getSValue().split('')).length > 0;
+                const isESymbol = util.hasElement(e, this.config.symbols.split(''));
+
+                if(hasSymbols != isESymbol) {
+                    this.prefinish(e, child, operate);
+                    return true;
+                }
+            }
+            
+        }
+
+        ////////////////////////////////
 
         const backsp = e == "Backspace";
         const del = e == "Delete";
